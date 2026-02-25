@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/miniDB.dir/src/main.cpp.o CMakeFiles/miniDB.dir/src/serializer.cpp.o CMakeFiles/miniDB.dir/src/statement.cpp.o CMakeFiles/miniDB.dir/src/pager.cpp.o CMakeFiles/miniDB.dir/src/table.cpp.o -o miniDB 
