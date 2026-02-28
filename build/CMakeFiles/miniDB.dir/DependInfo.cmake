@@ -8,8 +8,10 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/workspaces/Database-Engine/src/database.cpp" "CMakeFiles/miniDB.dir/src/database.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/database.cpp.o.d"
   "/workspaces/Database-Engine/src/main.cpp" "CMakeFiles/miniDB.dir/src/main.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/main.cpp.o.d"
   "/workspaces/Database-Engine/src/pager.cpp" "CMakeFiles/miniDB.dir/src/pager.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/pager.cpp.o.d"
+  "/workspaces/Database-Engine/src/schema.cpp" "CMakeFiles/miniDB.dir/src/schema.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/schema.cpp.o.d"
   "/workspaces/Database-Engine/src/serializer.cpp" "CMakeFiles/miniDB.dir/src/serializer.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/serializer.cpp.o.d"
   "/workspaces/Database-Engine/src/statement.cpp" "CMakeFiles/miniDB.dir/src/statement.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/statement.cpp.o.d"
   "/workspaces/Database-Engine/src/table.cpp" "CMakeFiles/miniDB.dir/src/table.cpp.o" "gcc" "CMakeFiles/miniDB.dir/src/table.cpp.o.d"

@@ -1,8 +1,12 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/miniDB.dir/src/database.cpp.o"
+  "CMakeFiles/miniDB.dir/src/database.cpp.o.d"
   "CMakeFiles/miniDB.dir/src/main.cpp.o"
   "CMakeFiles/miniDB.dir/src/main.cpp.o.d"
   "CMakeFiles/miniDB.dir/src/pager.cpp.o"
   "CMakeFiles/miniDB.dir/src/pager.cpp.o.d"
+  "CMakeFiles/miniDB.dir/src/schema.cpp.o"
+  "CMakeFiles/miniDB.dir/src/schema.cpp.o.d"
   "CMakeFiles/miniDB.dir/src/serializer.cpp.o"
   "CMakeFiles/miniDB.dir/src/serializer.cpp.o.d"
   "CMakeFiles/miniDB.dir/src/statement.cpp.o"

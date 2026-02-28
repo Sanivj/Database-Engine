@@ -11,4 +11,6 @@ add_executable(miniDB
     src/statement.cpp
     src/pager.cpp
     src/table.cpp
+    src/schema.cpp
+    src/database.cpp
 )

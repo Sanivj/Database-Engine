@@ -129,6 +129,30 @@ miniDB/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/build
 .PHONY : miniDB/fast
 
+src/database.o: src/database.cpp.o
+.PHONY : src/database.o
+
+# target to build an object file
+src/database.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/database.cpp.o
+.PHONY : src/database.cpp.o
+
+src/database.i: src/database.cpp.i
+.PHONY : src/database.i
+
+# target to preprocess a source file
+src/database.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/database.cpp.i
+.PHONY : src/database.cpp.i
+
+src/database.s: src/database.cpp.s
+.PHONY : src/database.s
+
+# target to generate assembly for a file
+src/database.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/database.cpp.s
+.PHONY : src/database.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -176,6 +200,30 @@ src/pager.s: src/pager.cpp.s
 src/pager.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/pager.cpp.s
 .PHONY : src/pager.cpp.s
+
+src/schema.o: src/schema.cpp.o
+.PHONY : src/schema.o
+
+# target to build an object file
+src/schema.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/schema.cpp.o
+.PHONY : src/schema.cpp.o
+
+src/schema.i: src/schema.cpp.i
+.PHONY : src/schema.i
+
+# target to preprocess a source file
+src/schema.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/schema.cpp.i
+.PHONY : src/schema.cpp.i
+
+src/schema.s: src/schema.cpp.s
+.PHONY : src/schema.s
+
+# target to generate assembly for a file
+src/schema.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/miniDB.dir/build.make CMakeFiles/miniDB.dir/src/schema.cpp.s
+.PHONY : src/schema.cpp.s
 
 src/serializer.o: src/serializer.cpp.o
 .PHONY : src/serializer.o
@@ -258,12 +306,18 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... miniDB"
+	@echo "... src/database.o"
+	@echo "... src/database.i"
+	@echo "... src/database.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
 	@echo "... src/pager.o"
 	@echo "... src/pager.i"
 	@echo "... src/pager.s"
+	@echo "... src/schema.o"
+	@echo "... src/schema.i"
+	@echo "... src/schema.s"
 	@echo "... src/serializer.o"
 	@echo "... src/serializer.i"
 	@echo "... src/serializer.s"

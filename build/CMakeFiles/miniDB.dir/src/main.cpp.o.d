@@ -178,4 +178,14 @@ CMakeFiles/miniDB.dir/src/main.cpp.o: \
  /usr/include/c++/13/pstl/execution_defs.h \
  /workspaces/Database-Engine/include/row.h /usr/include/c++/13/cstdint \
  /workspaces/Database-Engine/include/statement.h \
- /usr/include/c++/13/iostream
+ /workspaces/Database-Engine/include/schema.h \
+ /workspaces/Database-Engine/include/database.h \
+ /usr/include/c++/13/unordered_map \
+ /usr/include/c++/13/bits/unordered_map.h \
+ /usr/include/c++/13/bits/hashtable.h \
+ /usr/include/c++/13/bits/hashtable_policy.h \
+ /usr/include/c++/13/bits/enable_special_members.h \
+ /usr/include/c++/13/bits/node_handle.h \
+ /usr/include/c++/13/bits/erase_if.h \
+ /workspaces/Database-Engine/include/table.h /usr/include/c++/13/iostream \
+ /usr/include/c++/13/cstring /usr/include/string.h /usr/include/strings.h
