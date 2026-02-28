@@ -1,3 +1,0 @@
-/workspaces/Database-Engine/build/CMakeFiles/miniDB.dir
-/workspaces/Database-Engine/build/CMakeFiles/edit_cache.dir
-/workspaces/Database-Engine/build/CMakeFiles/rebuild_cache.dir
