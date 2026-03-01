@@ -1,4 +1,4 @@
-#include "table.h"
+#include "value.h"
 #include "statement.h"
 #include "database.h"
 #include <iostream>
@@ -16,11 +16,11 @@ void execute_statement(const Statement &statement, Database &db){
         db.create_table(statement.schema_to_create);
     }
 
-    if(statement.type==StatementType::DROP_TABLE){
+    else if(statement.type==StatementType::DROP_TABLE){
         db.drop_table(statement.table_name);
     }
     
-    if(statement.type==StatementType::INSERT){
+    else if(statement.type==StatementType::INSERT){
         if(!db.table_exists(statement.table_name)){
             cout<<"Error: Table does not exist.\n";
             return;
@@ -31,31 +31,29 @@ void execute_statement(const Statement &statement, Database &db){
             cout<<"Error: Column count mismatch.\n";
             return;
         }
-        Row row;
-        row.id=stoi(statement.insert_values[0]);
-        strncpy(row.username,statement.insert_values[1].c_str(),COLUMN_USERNAME_SIZE);
-        strncpy(row.email,statement.insert_values[2].c_str(),COLUMN_EMAIL_SIZE);
-        table->insert_row(row);
+        vector<Value> values;
+        for(size_t i=0;i<schema.get_columns().size();i++){
+            if(schema.get_columns()[i].type==DataType::INT){
+                values.push_back(Value::from_int(stoi(statement.insert_values[i])));
+            }else{
+                values.push_back(Value::from_text(statement.insert_values[i]));
+            }
+        }
+        table->insert_row(values);
     }
 
-    if(statement.type==StatementType::SELECT_ALL){
+    else if(statement.type==StatementType::SELECT_ALL){
         if(!db.table_exists(statement.table_name)){
             cout<<"Error: Tabel does not exist.\n";
             return;
         }
         Table *table =db.get_table(statement.table_name);
-        const Schema &schema=db.get_schema(statement.table_name);
+        
+        table->select_all();
+    }
 
-        if(!statement.has_where_clause){
-            table->select_all();
-        }else{
-            if(statement.where_column==schema.get_columns()[schema.get_primary_key_index()].name){
-                uint32_t id=stoi(statement.where_value);
-                table->select_by_id(id);
-            }else{
-                cout<<"WHERE only supports primary key for now.\n";
-            }
-        }
+    else{
+        cout<<"Unsupported Statement.\n";
     }
 }
 

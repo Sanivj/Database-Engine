@@ -13,7 +13,7 @@ bool Database::create_table(const Schema &schema){
 
     schemas[name]=schema;
     string filename="data/"+name+".db";
-    tables[name]=make_unique<Table>(filename);
+    tables[name]=make_unique<Table>(filename,schema);
 
     cout<<"Table '"<<name<<"' created successfully.\n";
     return true;
