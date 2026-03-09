@@ -60,6 +60,13 @@ void Table::deserialize_row(void *source,vector<Value> &values) const{
 }
 
 void Table::insert_row(const vector<Value> &values){
+    int pk_index=schema.get_primary_key_index();
+    if(pk_index>=0){
+        if(primary_key_exists(values[pk_index])){
+            cout<<"Error: Duplicate primary key.\n";
+            return;
+        }
+    }
     uint32_t row_size=compute_row_size();
     uint32_t offset=HEADER_SIZE+num_rows*row_size;
     uint32_t page_num=offset/PAGE_SIZE;
@@ -74,8 +81,6 @@ void Table::insert_row(const vector<Value> &values){
 
     void *first_page=pager.get_page(0);
     memcpy(first_page,&num_rows,HEADER_SIZE);
-
-    cout<<"Executed\n";
 }
 
 void Table::select_all(){
@@ -105,4 +110,108 @@ void Table::select_all(){
         }
         cout<<")\n";
     }
+}
+
+bool Table::primary_key_exists(const Value &pk_value){
+    int pk_index=schema.get_primary_key_index();
+
+    if(pk_index<0)return false;
+
+    uint32_t row_size=compute_row_size();
+
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t offset=HEADER_SIZE+i*row_size;
+        uint32_t page_num=offset/PAGE_SIZE;
+        uint32_t page_offset=offset%PAGE_SIZE;
+
+        void *page=pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+
+        vector<Value> values;
+        deserialize_row(source,values);
+
+        if(values[pk_index].get_type()==DataType::INT){
+            if(values[pk_index].as_int()==pk_value.as_int()){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Table::select_where(const string &column,const string &value){
+    string clean_column=column;
+    string clean_value=value;
+
+    if(!clean_column.empty()&&clean_column.back()==';'){
+        clean_column.pop_back();
+    }
+    if(!clean_value.empty()&&clean_value.back()==';'){
+        clean_value.pop_back();
+    }
+    int column_index=-1;
+    const auto &cols=schema.get_columns();
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==clean_column){
+            column_index=i;
+            break;
+        }
+    }
+    if(column_index<0){
+        cout<<"Error: Column does not exist.\n";
+        return;
+    }
+    uint32_t row_size=compute_row_size();
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t offset=HEADER_SIZE+i*row_size;
+        uint32_t page_num=offset/PAGE_SIZE;
+        uint32_t page_offset=offset%PAGE_SIZE;
+
+        void *page=pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+        vector<Value> values;
+        deserialize_row(source,values);
+        const Value &cell=values[column_index];
+        bool match=false;
+        if(cell.get_type()==DataType::INT){
+            int compare_value=stoi(value);
+            match=(cell.as_int()==compare_value);
+        }else{
+            match=(cell.as_text()==value);
+        }
+
+        if(match){
+            cout<<"(";
+            for(size_t j=0;j<values.size();j++){
+                if(values[j].get_type()==DataType::INT){
+                    cout<<values[j].as_int();
+                }else{
+                    cout<<values[j].as_text();
+                }
+
+                if(j!=values.size()-1){
+                    cout<<", ";
+                }
+            }
+            cout<<")\n";
+        }
+    }
+}
+
+vector<vector<Value>>Table::get_all_rows(){
+    vector<vector<Value>>rows;
+    uint32_t row_size=compute_row_size();
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t offset=HEADER_SIZE+i*row_size;
+        uint32_t page_num=offset/PAGE_SIZE;
+        uint32_t page_offset=offset%PAGE_SIZE;
+
+        void *page =pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+
+        vector<Value>values;
+        deserialize_row(source,values);
+        rows.push_back(values);
+    }
+    return rows;
 }

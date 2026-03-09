@@ -83,6 +83,7 @@ bool prepare_statement(const string &input,Statement &statement){
     }
 
     if(upper_first=="INSERT"){
+        statement.insert_values.clear();
         string into_word;
         ss>>into_word;
 
@@ -115,11 +116,14 @@ bool prepare_statement(const string &input,Statement &statement){
         stringstream values_stream(values_str);
         string value;
         while(getline(values_stream,value,',')){
-            value.erase(0,value.find_first_not_of("\t"));
-            value.erase(value.find_last_not_of("\t")+1);
+            value.erase(0,value.find_first_not_of(" \t"));
+            value.erase(value.find_last_not_of(" \t")+1);
 
-            if(!value.empty()&&value.front()=='\''&&value.back()=='\''){
-                value=value.substr(1,value.size()-2);
+            if(!value.empty()&&value.front()=='\''){
+                value.erase(0,1);
+            }
+            if(!value.empty()&&value.back()=='\''){
+                value.pop_back();
             }
             statement.insert_values.push_back(value);
         }
@@ -158,12 +162,18 @@ bool prepare_statement(const string &input,Statement &statement){
 
             string equals_sign;
             ss>>equals_sign;
+            
+            string raw_value;
+            ss>>raw_value;
 
-            ss>>statement.where_value;
-
-            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
-                statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
+            if(!raw_value.empty()&&raw_value.back()==';'){
+                raw_value.pop_back();
             }
+
+            if(!raw_value.empty()&&raw_value.front()=='\''&&raw_value.back()=='\''){
+                raw_value=raw_value.substr(1,raw_value.size()-2);
+            }
+            statement.where_value=raw_value;
         }
         return true;
     }

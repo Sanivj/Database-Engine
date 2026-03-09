@@ -14,12 +14,13 @@ class Table{
 
         void insert_row(const vector<Value>& values);
         void select_all();
-        void select_where(const string &column,const string &value) const;
+        void select_where(const string &column,const string &value);
+        vector<vector<Value>>get_all_rows();
     private:
         uint32_t compute_row_size() const;
         void serialize_row(const vector<Value> &values,void *destination) const;
         void deserialize_row(void *source,vector<Value> &values) const;
-
+        bool primary_key_exists(const Value &pk_value);
         Pager pager;
         Schema schema;
         uint32_t num_rows;

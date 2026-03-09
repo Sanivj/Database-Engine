@@ -9,13 +9,14 @@
 using namespace std;
 class Database{
     public:
-        Database()=default;
+        Database();
 
         bool create_table(const Schema &schema);
         bool drop_table(const string &table_name);
         const Schema &get_schema(const string &table_name) const;
         Table *get_table(const string &table_name);
         bool table_exists(const string &table_name) const;
+        void load_catalog();
     private:
         unordered_map<string,Schema>schemas;
         unordered_map<string,unique_ptr<Table>>tables;

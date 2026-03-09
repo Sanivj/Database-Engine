@@ -40,6 +40,7 @@ void execute_statement(const Statement &statement, Database &db){
             }
         }
         table->insert_row(values);
+        cout<<"Executed\n";
     }
 
     else if(statement.type==StatementType::SELECT_ALL){
@@ -49,7 +50,11 @@ void execute_statement(const Statement &statement, Database &db){
         }
         Table *table =db.get_table(statement.table_name);
         
-        table->select_all();
+        if(!statement.has_where_clause){
+            table->select_all();
+        }else{
+            table->select_where(statement.where_column,statement.where_value);
+        }
     }
 
     else{
