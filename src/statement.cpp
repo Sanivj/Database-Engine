@@ -133,38 +133,50 @@ bool prepare_statement(const string &input,Statement &statement){
 
     if(upper_first=="SELECT"){
         statement.type=StatementType::SELECT_ALL;
-        string columns_part;
-        ss>>columns_part;
+        statement.select_columns.clear();
 
-        if(columns_part=="*"){
-            statement.select_all_columns=true;
-        }else{
-            cout<<"Only '*' supported for now.\n";
-            return false;
-        }
+        string rest;
+        getline(ss,rest);
 
-        string from_word;
-        ss>>from_word;
-        if(string_to_upper(from_word)!="FROM"){
+        rest.erase(0,rest.find_first_not_of(" \t"));
+
+        size_t from_pos=rest.find("FROM");
+
+        if(from_pos==string::npos){
             cout<<"Syntax error. Expected FROM.\n";
             return false;
         }
 
-        ss>>statement.table_name;
+        string column_part=rest.substr(0,from_pos);
+        string after_from=rest.substr(from_pos+4);
 
+        column_part.erase(0,column_part.find_first_not_of(" \t"));
+        column_part.erase(column_part.find_last_not_of(" \t")+1);
+
+        if(column_part=="*"){
+            statement.select_all_columns=true;
+        }else{
+            statement.select_all_columns=false;
+            stringstream col_stream(column_part);
+            string col;
+            while(getline(col_stream,col,',')){
+                col.erase(0,col.find_first_not_of(" \t"));
+                col.erase(col.find_last_not_of(" \t")+1);
+                statement.select_columns.push_back(col);
+            }
+        }
+        stringstream from_stream(after_from);
+        from_stream>>statement.table_name;
         string maybe_where;
-        ss>>maybe_where;
-
+        from_stream>>maybe_where;
         if(string_to_upper(maybe_where)=="WHERE"){
             statement.has_where_clause=true;
-
-            ss>>statement.where_column;
-
+            from_stream>>statement.where_column;
             string equals_sign;
-            ss>>equals_sign;
-            
+            from_stream>>equals_sign;
+
             string raw_value;
-            ss>>raw_value;
+            from_stream>>raw_value;
 
             if(!raw_value.empty()&&raw_value.back()==';'){
                 raw_value.pop_back();

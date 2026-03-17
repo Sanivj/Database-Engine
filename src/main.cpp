@@ -49,11 +49,25 @@ void execute_statement(const Statement &statement, Database &db){
             return;
         }
         Table *table =db.get_table(statement.table_name);
-        
+        const Schema &schema=db.get_schema(statement.table_name);
+
         if(!statement.has_where_clause){
-            table->select_all();
+            if(statement.select_all_columns){
+                table->select_all();
+            }else{
+                table->select_columns(statement.select_columns,schema);
+            }
         }else{
-            table->select_where(statement.where_column,statement.where_value);
+            if(statement.select_all_columns){
+                table->select_where(statement.where_column,statement.where_value);
+            }else{
+                table->select_columns_where(
+                    statement.select_columns,
+                    schema,
+                    statement.where_column,
+                    statement.where_value
+                );
+            }
         }
     }
 

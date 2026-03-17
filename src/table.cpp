@@ -215,3 +215,114 @@ vector<vector<Value>>Table::get_all_rows(){
     }
     return rows;
 }
+
+void Table::select_columns(const vector<string>&columns,const Schema &schema){
+    vector<int>column_indexes;
+
+    const auto &schema_cols=schema.get_columns();
+    for(const auto &name:columns){
+        for(size_t i=0;i<schema_cols.size();i++){
+            if(schema_cols[i].name==name){
+                column_indexes.push_back(i);
+                break;
+            }
+        }
+    }
+    uint32_t row_size=compute_row_size();
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t offset=HEADER_SIZE+i*row_size;
+        uint32_t page_num=offset/PAGE_SIZE;
+        uint32_t page_offset=offset%PAGE_SIZE;
+
+        void *page=pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+        vector<Value>values;
+        deserialize_row(source,values);
+        cout<<"(";
+        for(size_t j=0;j<column_indexes.size();j++){
+            int idx=column_indexes[j];
+            if(values[idx].get_type()==DataType::INT){
+                cout<<values[idx].as_int();
+            }else{
+                cout<<values[idx].as_text();
+            }
+            if(j!=column_indexes.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<")\n";
+    }
+}
+
+void Table::select_columns_where(const vector<string>&columns,const Schema &schema,const string &where_column,const string &where_value){
+    string clean_column=where_column;
+    string clean_value=where_value;
+
+    clean_column.erase(0,clean_column.find_first_not_of(" \t"));
+    clean_column.erase(clean_column.find_last_not_of(" \t")+1);
+
+    clean_value.erase(0,clean_value.find_first_not_of(" \t"));
+    clean_value.erase(clean_value.find_last_not_of(" \t")+1);
+
+    if(!clean_column.empty()&&clean_column.back()==';'){
+        clean_column.pop_back();
+    }
+
+    if(!clean_value.empty()&&clean_value.back()==';'){
+        clean_value.pop_back();
+    }
+
+    vector<int>column_indexes;
+    const auto &schema_cols=schema.get_columns();
+    for(const auto &name:columns){
+        for(size_t i=0;i<schema_cols.size();i++){
+            if(schema_cols[i].name==name){
+                column_indexes.push_back(i);
+                break;
+            }
+        }
+    }
+    int where_index=-1;
+    for(size_t i=0;i<schema_cols.size();i++){
+        if(schema_cols[i].name==clean_column){
+            where_index=i;
+            break;
+        }
+    }
+    if(where_index==-1){
+        cout<<"Error: Column does not exist.\n";
+        return;
+    }
+    uint32_t row_size=compute_row_size();
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t offset=HEADER_SIZE+i*row_size;
+        uint32_t page_num=offset/PAGE_SIZE;
+        uint32_t page_offset=offset%PAGE_SIZE;
+
+        void *page=pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+        vector<Value>values;
+        deserialize_row(source,values);
+        bool match=false;
+        if(values[where_index].get_type()==DataType::INT){
+            match=values[where_index].as_int()==stoi(clean_value);
+        }else{
+            match=values[where_index].as_text()==clean_value;
+        }
+        if(match){
+            cout<<"(";
+            for(size_t j=0;j<column_indexes.size();j++){
+                int idx=column_indexes[j];
+                if(values[idx].get_type()==DataType::INT){
+                    cout<<values[idx].as_int();
+                }else{
+                    cout<<values[idx].as_text();
+                }
+                if(j!=column_indexes.size()-1){
+                    cout<<", ";
+                }
+            }
+            cout<<")\n";
+        }
+    }
+}
