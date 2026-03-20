@@ -45,7 +45,7 @@ void execute_statement(const Statement &statement, Database &db){
 
     else if(statement.type==StatementType::SELECT_ALL){
         if(!db.table_exists(statement.table_name)){
-            cout<<"Error: Tabel does not exist.\n";
+            cout<<"Error: Table does not exist.\n";
             return;
         }
         Table *table =db.get_table(statement.table_name);
@@ -59,16 +59,38 @@ void execute_statement(const Statement &statement, Database &db){
             }
         }else{
             if(statement.select_all_columns){
-                table->select_where(statement.where_column,statement.where_value);
+                table->select_where(statement.where_column,statement.where_operator,statement.where_value);
             }else{
                 table->select_columns_where(
                     statement.select_columns,
                     schema,
                     statement.where_column,
+                    statement.where_operator,
                     statement.where_value
                 );
             }
         }
+    }
+
+    else if(statement.type==StatementType::DELETE_ROWS){
+        if(!db.table_exists(statement.table_name)){
+            cout<<"Error: Table does not exist.\n";
+            return;
+        }
+
+        Table *table=db.get_table(statement.table_name);
+
+        table->delete_where(statement.where_column,statement.where_operator,statement.where_value);
+    }
+
+    else if(statement.type==StatementType::UPDATE_ROWS){
+        if(!db.table_exists(statement.table_name)){
+            cout<<"Error: Table does not exist.\n";
+            return;
+        }
+        Table *table=db.get_table(statement.table_name);
+
+        table->update_where(statement.update_column,statement.update_value,statement.where_column,statement.where_operator,statement.where_value);
     }
 
     else{

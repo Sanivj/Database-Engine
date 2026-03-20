@@ -9,6 +9,16 @@ static string string_to_upper(string s){
     return s;
 }
 
+static string trim_copy(const string& s){
+    size_t start = s.find_first_not_of(" \t");
+    if(start == string::npos){
+        return "";
+    }
+
+    size_t end = s.find_last_not_of(" \t");
+    return s.substr(start, end - start + 1);
+}
+
 bool prepare_statement(const string &input,Statement &statement){
     string trimmed=input;
     if(!trimmed.empty()&&trimmed.back()==';')trimmed.pop_back();
@@ -172,8 +182,7 @@ bool prepare_statement(const string &input,Statement &statement){
         if(string_to_upper(maybe_where)=="WHERE"){
             statement.has_where_clause=true;
             from_stream>>statement.where_column;
-            string equals_sign;
-            from_stream>>equals_sign;
+            from_stream>>statement.where_operator;
 
             string raw_value;
             from_stream>>raw_value;
@@ -186,6 +195,122 @@ bool prepare_statement(const string &input,Statement &statement){
                 raw_value=raw_value.substr(1,raw_value.size()-2);
             }
             statement.where_value=raw_value;
+        }
+        return true;
+    }
+
+    if(upper_first=="DELETE"){
+        string from_word;
+        ss>>from_word;
+
+        if(string_to_upper(from_word)!="FROM"){
+            cout<<"Syntax error. Expected FROM.\n";
+            return false;
+        }
+
+        ss>>statement.table_name;
+
+        string where_word;
+        ss>>where_word;
+
+        if(string_to_upper(where_word)!="WHERE"){
+            cout<<"Syntax error. Expected WHERE.\n";
+            return false;
+        }
+
+        statement.type=StatementType::DELETE_ROWS;
+        statement.has_where_clause=true;
+
+        ss>>statement.where_column;
+        ss>>statement.where_operator;
+        ss>>statement.where_value;
+
+        if(!statement.where_value.empty()&&statement.where_value.back()==';'){
+            statement.where_value.pop_back();
+        }
+
+        if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
+            statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
+        }
+        return true;
+    }
+
+    if(upper_first=="DROP"){
+        string second_word;
+        ss>>second_word;
+
+        if(string_to_upper(second_word)!="TABLE"){
+            cout<<"Syntax error. Expected TABLE.\n";
+            return false;
+        }
+        ss>>statement.table_name;
+
+        if(!statement.table_name.empty()&&statement.table_name.back()==';'){
+            statement.table_name.pop_back();
+        }
+
+        statement.type=StatementType::DROP_TABLE;
+        return true;
+    }
+
+    if(upper_first=="UPDATE"){
+        statement.type=StatementType::UPDATE_ROWS;
+        statement.has_where_clause=true;
+        ss>>statement.table_name;
+
+        string set_word;
+        ss>>set_word;
+
+        if(string_to_upper(set_word)!="SET"){
+            cout<<"Syntax Error. Expected SET.\n";
+            return false;
+        }
+
+        string rest;
+        getline(ss,rest);
+        rest=trim_copy(rest);
+
+        rest.erase(0,rest.find_first_not_of(" \t"));
+
+        size_t where_pos=rest.find("WHERE");
+        if(where_pos==string::npos){
+            cout<<"Syntax error. Expected WHERE.\n";
+            return false;
+        }
+
+        string set_part=trim_copy(rest.substr(0,where_pos));
+        string where_part=trim_copy(rest.substr(where_pos+5));
+        
+        size_t eq_pos=set_part.find('=');
+        if(eq_pos==string::npos){
+            cout<<"Syntax error in SET clause.\n";
+            return false;
+        }
+
+        statement.update_column=trim_copy(set_part.substr(0,eq_pos));
+        statement.update_value=trim_copy(set_part.substr(eq_pos+1));
+
+        if(!statement.update_value.empty()&&statement.update_value.front()=='\''&&statement.update_value.back()=='\''){
+            statement.update_value=statement.update_value.substr(1,statement.update_value.size()-2);
+        }
+
+        statement.has_where_clause=true;
+
+        stringstream where_stream(where_part);
+        where_stream>>statement.where_column;
+        where_stream>>statement.where_operator;
+        where_stream>>statement.where_value;
+
+        statement.where_column = trim_copy(statement.where_column);
+        statement.where_operator = trim_copy(statement.where_operator);
+        statement.where_value = trim_copy(statement.where_value);
+
+        if(!statement.where_value.empty()&&statement.where_value.back()==';'){
+            statement.where_value.pop_back();
+        }
+
+        if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
+            statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
         }
         return true;
     }

@@ -65,15 +65,35 @@ bool Database::create_table(const Schema &schema){
     return true;
 }
 
-bool Database::drop_table(const string &table_name){
+void Database::drop_table(const string &table_name){
+    if(table_name=="sys_tables"||table_name=="sys_columns"){
+        cout<<"Error: Cannot drop system tables.\n";
+        return;
+    }
+
     if(!table_exists(table_name)){
         cout<<"Error: Table does not exist.\n";
-        return false;
+        return;
     }
+
+    Table *sys_tables=get_table("sys_tables");
+    Table *sys_columns=get_table("sys_columns");
+
+    if(sys_tables){
+        sys_tables->delete_where("table_name","=",table_name,false);
+    }
+
+    if(sys_columns){
+        sys_columns->delete_where("table_name","=",table_name,false);
+    }
+
+    string filename="data/"+table_name+".db";
+    filesystem::remove(filename);
+
     tables.erase(table_name);
     schemas.erase(table_name);
-    cout<<"Table '"<<table_name<<"' dropped.\n";
-    return true;
+
+    cout<<"Table "<<table_name<<" dropped successfully.\n";
 }
 
 Table *Database::get_table(const string &table_name){

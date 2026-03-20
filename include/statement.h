@@ -10,9 +10,10 @@ using namespace std;
 enum class StatementType{
     INSERT,
     SELECT_ALL,
-    SELECT_BY_ID,
     CREATE_TABLE,
-    DROP_TABLE
+    DROP_TABLE,
+    DELETE_ROWS,
+    UPDATE_ROWS
 };
 
 struct Statement{
@@ -26,9 +27,13 @@ struct Statement{
     bool select_all_columns=false;
     bool has_where_clause=false;
     string where_column;
+    string where_operator;
     string where_value;
     //CREATE
     Schema schema_to_create;
+    //UPDATE
+    string update_column;
+    string update_value;
 };
 
 bool prepare_statement(const string &input,Statement &statement);

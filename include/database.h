@@ -12,7 +12,7 @@ class Database{
         Database();
 
         bool create_table(const Schema &schema);
-        bool drop_table(const string &table_name);
+        void drop_table(const string &table_name);
         const Schema &get_schema(const string &table_name) const;
         Table *get_table(const string &table_name);
         bool table_exists(const string &table_name) const;

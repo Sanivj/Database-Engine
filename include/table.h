@@ -14,9 +14,11 @@ class Table{
 
         void insert_row(const vector<Value>& values);
         void select_all();
-        void select_where(const string &column,const string &value);
+        void select_where(const string &column,const string &op,const string &value);
         void select_columns(const vector<string>&columns,const Schema &schema);
-        void select_columns_where(const vector<string>&columns,const Schema &schema,const string &where_column,const string &where_value);
+        void select_columns_where(const vector<string>&columns,const Schema &schema,const string &where_column,const string &where_operator,const string &where_value);
+        void delete_where(const string &column,const string &op,const string &value,bool print_result=true);
+        void update_where(const string &target_column,const string &new_value,const string &where_column,const string &where_operator,const string &where_value);
         vector<vector<Value>>get_all_rows();
     private:
         uint32_t compute_row_size() const;
