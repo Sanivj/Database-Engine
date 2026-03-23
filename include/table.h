@@ -20,6 +20,10 @@ class Table{
         void delete_where(const string &column,const string &op,const string &value,bool print_result=true);
         void update_where(const string &target_column,const string &new_value,const string &where_column,const string &where_operator,const string &where_value);
         vector<vector<Value>>get_all_rows();
+        vector<vector<Value>>filter_rows(const string &where_column,const string &where_operator,const string &where_value);
+        void print_rows(const vector<vector<Value>>&rows)const;
+        void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema)const;
+        void sort_rows(vector<vector<Value>>&rows,const string &order_by_column,bool descending)const;
     private:
         uint32_t compute_row_size() const;
         void serialize_row(const vector<Value> &values,void *destination) const;

@@ -51,24 +51,26 @@ void execute_statement(const Statement &statement, Database &db){
         Table *table =db.get_table(statement.table_name);
         const Schema &schema=db.get_schema(statement.table_name);
 
-        if(!statement.has_where_clause){
-            if(statement.select_all_columns){
-                table->select_all();
-            }else{
-                table->select_columns(statement.select_columns,schema);
-            }
+        vector<vector<Value>>rows;
+
+        if(statement.has_where_clause){
+            rows=table->filter_rows(
+                statement.where_column,
+                statement.where_operator,
+                statement.where_value
+            );
         }else{
-            if(statement.select_all_columns){
-                table->select_where(statement.where_column,statement.where_operator,statement.where_value);
-            }else{
-                table->select_columns_where(
-                    statement.select_columns,
-                    schema,
-                    statement.where_column,
-                    statement.where_operator,
-                    statement.where_value
-                );
-            }
+            rows=table->get_all_rows();
+        }
+
+        if(statement.has_order_by){
+            table->sort_rows(rows,statement.order_by_column,statement.order_desc);
+        }
+
+        if(statement.select_all_columns){
+            table->print_rows(rows);
+        }else{
+            table->print_selected_columns(rows,statement.select_columns,schema);
         }
     }
 
@@ -109,7 +111,7 @@ int main(){
             cout<<"Exiting MiniDB...\n";
             break;
         }
-        Statement statement;
+        Statement statement={};
         if(!prepare_statement(input,statement)){
             cout<<"Unrecognized command\n";
             continue;

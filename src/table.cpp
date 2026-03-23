@@ -1,6 +1,7 @@
 #include "table.h"
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 static const uint32_t HEADER_SIZE=sizeof(uint32_t);
 static const uint32_t FIXED_TEXT_SIZE=256;
@@ -524,4 +525,156 @@ void Table::update_where(const string &target_column,const string &new_value,con
     memcpy(first_page,&num_rows,HEADER_SIZE);
 
     cout<<"Updated "<<updated_count<<" row(s).\n";
+}
+
+vector<vector<Value>> Table::filter_rows(const string &where_column,const string &where_operator,const string &where_value){
+    if(where_column.empty()){
+        return get_all_rows();
+    }
+    string clean_column=trim_copy(where_column);
+    string clean_op=trim_copy(where_operator);
+    string clean_value=trim_copy(where_value);
+
+    if(!clean_column.empty()&&clean_column.back()==';')clean_column.pop_back();
+    if(!clean_op.empty()&&clean_op.back()==';')clean_op.pop_back();
+    if(!clean_value.empty()&&clean_value.back()==';')clean_value.pop_back();
+
+    vector<vector<Value>>result;
+
+    int where_index=-1;
+    const auto &cols=schema.get_columns();
+
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==clean_column){
+            where_index=i;
+            break;
+        }
+    }
+
+    if(where_index==-1){
+        cout<<"Error: Column does not exist.\n";
+        return result;
+    }
+
+    vector<vector<Value>>all_rows=get_all_rows();
+
+    for(const auto &row:all_rows){
+        const Value &cell=row[where_index];
+        bool match=false;
+
+        if(cell.get_type()==DataType::INT){
+            int left=cell.as_int();
+            int right=stoi(clean_value);
+
+            if(clean_op=="=")match=(left==right);
+            else if(clean_op=="!=")match=(left!=right);
+            else if(clean_op==">")match=(left>right);
+            else if(clean_op=="<")match=(left<right);
+            else if(clean_op=="<=")match=(left<=right);
+            else if(clean_op==">=")match=(left>=right);
+        }else{
+            string left=cell.as_text();
+            if(clean_op=="=")match=(left==clean_value);
+            else if(clean_op=="!=")match=(left!=clean_value);
+        }
+        if(match){
+            result.push_back(row);
+        }
+    }
+    return result;
+}
+
+void Table::print_rows(const vector<vector<Value>>&rows)const{
+    for(const auto &values:rows){
+        cout<<"(";
+        for(size_t j=0;j<values.size();j++){
+            if(values[j].get_type()==DataType::INT){
+                cout<<values[j].as_int();
+            }else{
+                cout<<values[j].as_text();
+            }
+
+            if(j!=values.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<")\n";
+    }
+}
+
+void Table::print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema)const{
+    vector<int>column_indexes;
+    const auto &schema_cols=schema.get_columns();
+
+    for(const auto &raw_name:columns){
+        string name=raw_name;
+        if(!name.empty()&&name.back()==';'){
+            name.pop_back();
+        }
+        name=trim_copy(name);
+        bool found=false;
+        for(size_t i=0;i<schema_cols.size();i++){
+            if(schema_cols[i].name==name){
+                column_indexes.push_back(i);
+                found=true;
+                break;
+            }
+        }
+        if(!found){
+            cout<<"Error: Column does not exist.\n";
+            return;
+        }
+    }
+    for(const auto &values:rows){
+        cout<<"(";
+        for(size_t j=0;j<column_indexes.size();j++){
+            int idx=column_indexes[j];
+            if(values[idx].get_type()==DataType::INT){
+                cout<<values[idx].as_int();
+            }else{
+                cout<<values[idx].as_text();
+            }
+
+            if(j!=column_indexes.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<")\n";
+    }
+}
+
+void Table::sort_rows(vector<vector<Value>>&rows,const string &order_by_column,bool descending)const{
+    string clean_column=trim_copy(order_by_column);
+    if(!clean_column.empty()&&clean_column.back()==';'){
+        clean_column.pop_back();
+    }
+    clean_column=trim_copy(clean_column);
+    int order_index=-1;
+    const auto &cols=schema.get_columns();
+
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==clean_column){
+            order_index=i;
+            break;
+        }
+    }
+
+    if(order_index==-1){
+        cout<<"Error: Column does not exist.\n";
+        return;
+    }
+
+    sort(rows.begin(),rows.end(),[&](const vector<Value>&a,const vector<Value>&b){
+        const Value &left=a[order_index];
+        const Value &right=b[order_index];
+
+        bool result=false;
+        if(left.get_type()==DataType::INT){
+            result=left.as_int()<right.as_int();
+        }else{
+            result=left.as_text()<right.as_text();
+        }
+
+        return descending?!result:result;
+    });
 }

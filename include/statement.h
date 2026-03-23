@@ -34,6 +34,10 @@ struct Statement{
     //UPDATE
     string update_column;
     string update_value;
+    //ORDER BY
+    bool has_order_by=false;
+    string order_by_column;
+    bool order_desc=false;
 };
 
 bool prepare_statement(const string &input,Statement &statement);

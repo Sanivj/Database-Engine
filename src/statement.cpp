@@ -144,24 +144,22 @@ bool prepare_statement(const string &input,Statement &statement){
     if(upper_first=="SELECT"){
         statement.type=StatementType::SELECT_ALL;
         statement.select_columns.clear();
+        statement.has_where_clause=false;
+        statement.has_order_by=false;
+        statement.order_desc=false;
 
         string rest;
         getline(ss,rest);
-
-        rest.erase(0,rest.find_first_not_of(" \t"));
+        rest=trim_copy(rest);
 
         size_t from_pos=rest.find("FROM");
-
         if(from_pos==string::npos){
             cout<<"Syntax error. Expected FROM.\n";
             return false;
         }
 
-        string column_part=rest.substr(0,from_pos);
-        string after_from=rest.substr(from_pos+4);
-
-        column_part.erase(0,column_part.find_first_not_of(" \t"));
-        column_part.erase(column_part.find_last_not_of(" \t")+1);
+        string column_part=trim_copy(rest.substr(0,from_pos));
+        string after_from=trim_copy(rest.substr(from_pos+4));
 
         if(column_part=="*"){
             statement.select_all_columns=true;
@@ -169,32 +167,68 @@ bool prepare_statement(const string &input,Statement &statement){
             statement.select_all_columns=false;
             stringstream col_stream(column_part);
             string col;
+
             while(getline(col_stream,col,',')){
-                col.erase(0,col.find_first_not_of(" \t"));
-                col.erase(col.find_last_not_of(" \t")+1);
+                col=trim_copy(col);
+                if(!col.empty()&&col.back()==';'){
+                    col.pop_back();
+                }
+                col=trim_copy(col);
                 statement.select_columns.push_back(col);
             }
         }
-        stringstream from_stream(after_from);
-        from_stream>>statement.table_name;
-        string maybe_where;
-        from_stream>>maybe_where;
-        if(string_to_upper(maybe_where)=="WHERE"){
+        size_t where_pos=after_from.find("WHERE");
+        size_t order_pos=after_from.find("ORDER BY");
+
+        if(where_pos==string::npos&&order_pos==string::npos){
+            statement.table_name=trim_copy(after_from);
+        }
+
+        else if(where_pos!=string::npos&&order_pos==string::npos){
+            statement.table_name=trim_copy(after_from.substr(0,where_pos));
+            string where_part=trim_copy(after_from.substr(where_pos+5));
             statement.has_where_clause=true;
-            from_stream>>statement.where_column;
-            from_stream>>statement.where_operator;
+            stringstream where_stream(where_part);
+            where_stream>>statement.where_column;
+            where_stream>>statement.where_operator;
+            where_stream>>statement.where_value;
+        }
 
-            string raw_value;
-            from_stream>>raw_value;
+        else if(where_pos==string::npos&&order_pos!=string::npos){
+            statement.table_name=trim_copy(after_from.substr(0,order_pos));
+        }
 
-            if(!raw_value.empty()&&raw_value.back()==';'){
-                raw_value.pop_back();
+        else{
+            statement.table_name=trim_copy(after_from.substr(0,where_pos));
+            string where_part=trim_copy(after_from.substr(where_pos+5,order_pos-(where_pos+5)));
+            statement.has_where_clause=true;
+            stringstream where_stream(where_part);
+            where_stream>>statement.where_column;
+            where_stream>>statement.where_operator;
+            where_stream>>statement.where_value;
+        }
+
+        if(order_pos!=string::npos){
+            string order_part=trim_copy(after_from.substr(order_pos+9));
+            statement.has_order_by=true;
+            stringstream order_stream(order_part);
+            order_stream>>statement.order_by_column;
+
+            statement.order_by_column=trim_copy(statement.order_by_column);
+            if(!statement.order_by_column.empty()&&statement.order_by_column.back()==';'){
+                statement.order_by_column.pop_back();
+            }
+            string maybe_dir;
+            order_stream>>maybe_dir;
+            maybe_dir=trim_copy(maybe_dir);
+
+            if(!maybe_dir.empty()&&maybe_dir.back()==';'){
+                maybe_dir.pop_back();
             }
 
-            if(!raw_value.empty()&&raw_value.front()=='\''&&raw_value.back()=='\''){
-                raw_value=raw_value.substr(1,raw_value.size()-2);
+            if(string_to_upper(maybe_dir)=="DESC"){
+                statement.order_desc=true;
             }
-            statement.where_value=raw_value;
         }
         return true;
     }
