@@ -38,6 +38,15 @@ struct Statement{
     bool has_order_by=false;
     string order_by_column;
     bool order_desc=false;
+    //LIMIT
+    bool has_limit=false;
+    int limit_count=0;
+    //AND/OR
+    bool has_second_condition=false;
+    string where_column2;
+    string where_operator2;
+    string where_value2;
+    string logical_operator;
 };
 
 bool prepare_statement(const string &input,Statement &statement);

@@ -147,6 +147,10 @@ bool prepare_statement(const string &input,Statement &statement){
         statement.has_where_clause=false;
         statement.has_order_by=false;
         statement.order_desc=false;
+        statement.has_limit=false;
+        statement.limit_count=0;
+        statement.has_second_condition=false;
+        statement.logical_operator="";
 
         string rest;
         getline(ss,rest);
@@ -179,19 +183,54 @@ bool prepare_statement(const string &input,Statement &statement){
         }
         size_t where_pos=after_from.find("WHERE");
         size_t order_pos=after_from.find("ORDER BY");
+        size_t limit_pos=after_from.find("LIMIT");
 
-        if(where_pos==string::npos&&order_pos==string::npos){
+        if(where_pos==string::npos&&order_pos==string::npos&&limit_pos==string::npos){
             statement.table_name=trim_copy(after_from);
+        }
+
+        else if(where_pos==string::npos&&order_pos==string::npos&&limit_pos!=string::npos){
+            statement.table_name=trim_copy(after_from.substr(0,limit_pos));
         }
 
         else if(where_pos!=string::npos&&order_pos==string::npos){
             statement.table_name=trim_copy(after_from.substr(0,where_pos));
-            string where_part=trim_copy(after_from.substr(where_pos+5));
+            string where_part;
+            if(limit_pos!=string::npos){
+                where_part=trim_copy(after_from.substr(where_pos+5,limit_pos-(where_pos+5)));
+            }else{
+                where_part=trim_copy(after_from.substr(where_pos+5));
+            }
             statement.has_where_clause=true;
             stringstream where_stream(where_part);
             where_stream>>statement.where_column;
             where_stream>>statement.where_operator;
             where_stream>>statement.where_value;
+
+            statement.where_value=trim_copy(statement.where_value);
+
+            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
+                statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
+            }
+
+            string maybe_logical;
+            where_stream>>maybe_logical;
+            maybe_logical=string_to_upper(trim_copy(maybe_logical));
+
+            if(maybe_logical=="AND"||maybe_logical=="OR"){
+                statement.has_second_condition=true;
+                statement.logical_operator=maybe_logical;
+
+                where_stream>>statement.where_column2;
+                where_stream>>statement.where_operator2;
+                where_stream>>statement.where_value2;
+
+                statement.where_value2=trim_copy(statement.where_value2);
+
+                if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\''){
+                    statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
+                }
+            }
         }
 
         else if(where_pos==string::npos&&order_pos!=string::npos){
@@ -200,12 +239,45 @@ bool prepare_statement(const string &input,Statement &statement){
 
         else{
             statement.table_name=trim_copy(after_from.substr(0,where_pos));
-            string where_part=trim_copy(after_from.substr(where_pos+5,order_pos-(where_pos+5)));
+            size_t where_end;
+            if(order_pos!=string::npos){
+                where_end=order_pos;
+            }else if(limit_pos!=string::npos){
+                where_end=limit_pos;
+            }else{
+                where_end=after_from.length();
+            }
+            string where_part=trim_copy(after_from.substr(where_pos+5,where_end-(where_pos+5)));
             statement.has_where_clause=true;
             stringstream where_stream(where_part);
             where_stream>>statement.where_column;
             where_stream>>statement.where_operator;
             where_stream>>statement.where_value;
+
+            statement.where_value=trim_copy(statement.where_value);
+
+            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
+                statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
+            }
+
+            string maybe_logical;
+            where_stream>>maybe_logical;
+            maybe_logical=string_to_upper(trim_copy(maybe_logical));
+
+            if(maybe_logical=="AND"||maybe_logical=="OR"){
+                statement.has_second_condition=true;
+                statement.logical_operator=maybe_logical;
+
+                where_stream>>statement.where_column2;
+                where_stream>>statement.where_operator2;
+                where_stream>>statement.where_value2;
+
+                statement.where_value2=trim_copy(statement.where_value2);
+
+                if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\''){
+                    statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
+                }
+            }
         }
 
         if(order_pos!=string::npos){
@@ -230,6 +302,19 @@ bool prepare_statement(const string &input,Statement &statement){
                 statement.order_desc=true;
             }
         }
+
+        if(limit_pos!=string::npos){
+            statement.has_limit=true;
+            string limit_part;
+            if(order_pos!=string::npos&&order_pos>limit_pos){
+                limit_part=trim_copy(after_from.substr(limit_pos+5,order_pos-(limit_pos+5)));
+            }else{
+                limit_part=trim_copy(after_from.substr(limit_pos+5));
+            }
+            stringstream limit_stream(limit_part);
+            limit_stream>>statement.limit_count;
+        }
+        
         return true;
     }
 
@@ -334,6 +419,31 @@ bool prepare_statement(const string &input,Statement &statement){
         where_stream>>statement.where_column;
         where_stream>>statement.where_operator;
         where_stream>>statement.where_value;
+
+        statement.where_value=trim_copy(statement.where_value);
+
+        if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
+            statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
+        }
+
+        string maybe_logical;
+        where_stream>>maybe_logical;
+        maybe_logical=string_to_upper(trim_copy(maybe_logical));
+
+        if(maybe_logical=="AND"||maybe_logical=="OR"){
+            statement.has_second_condition=true;
+            statement.logical_operator=maybe_logical;
+
+            where_stream>>statement.where_column2;
+            where_stream>>statement.where_operator2;
+            where_stream>>statement.where_value2;
+
+            statement.where_value2=trim_copy(statement.where_value2);
+
+            if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\''){
+                statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
+            }
+        }
 
         statement.where_column = trim_copy(statement.where_column);
         statement.where_operator = trim_copy(statement.where_operator);

@@ -55,9 +55,7 @@ void execute_statement(const Statement &statement, Database &db){
 
         if(statement.has_where_clause){
             rows=table->filter_rows(
-                statement.where_column,
-                statement.where_operator,
-                statement.where_value
+                statement
             );
         }else{
             rows=table->get_all_rows();
@@ -65,6 +63,12 @@ void execute_statement(const Statement &statement, Database &db){
 
         if(statement.has_order_by){
             table->sort_rows(rows,statement.order_by_column,statement.order_desc);
+        }
+
+        if(statement.has_limit){
+            if(statement.limit_count<rows.size()){
+                rows.resize(statement.limit_count);
+            }
         }
 
         if(statement.select_all_columns){

@@ -527,57 +527,94 @@ void Table::update_where(const string &target_column,const string &new_value,con
     cout<<"Updated "<<updated_count<<" row(s).\n";
 }
 
-vector<vector<Value>> Table::filter_rows(const string &where_column,const string &where_operator,const string &where_value){
-    if(where_column.empty()){
-        return get_all_rows();
-    }
-    string clean_column=trim_copy(where_column);
-    string clean_op=trim_copy(where_operator);
-    string clean_value=trim_copy(where_value);
-
-    if(!clean_column.empty()&&clean_column.back()==';')clean_column.pop_back();
-    if(!clean_op.empty()&&clean_op.back()==';')clean_op.pop_back();
-    if(!clean_value.empty()&&clean_value.back()==';')clean_value.pop_back();
-
+vector<vector<Value>>Table::filter_rows(const Statement &statement){
     vector<vector<Value>>result;
 
-    int where_index=-1;
+    vector<vector<Value>>all_rows=get_all_rows();
     const auto &cols=schema.get_columns();
 
+    int idx1=-1;
     for(size_t i=0;i<cols.size();i++){
-        if(cols[i].name==clean_column){
-            where_index=i;
+        if(cols[i].name==statement.where_column){
+            idx1=i;
             break;
         }
     }
 
-    if(where_index==-1){
+    if(idx1==-1){
         cout<<"Error: Column does not exist.\n";
         return result;
     }
 
-    vector<vector<Value>>all_rows=get_all_rows();
+    int idx2=-1;
+    if(statement.has_second_condition){
+        for(size_t i=0;i<cols.size();i++){
+            if(cols[i].name==statement.where_column2){
+                idx2=i;
+                break;
+            }
+        }
+
+        if(idx2==-1){
+            cout<<"Error: Column does not exist.\n";
+            return result;
+        }
+    }
 
     for(const auto &row:all_rows){
-        const Value &cell=row[where_index];
-        bool match=false;
+        bool match1=false;
+        const Value &cell1=row[idx1];
 
-        if(cell.get_type()==DataType::INT){
-            int left=cell.as_int();
-            int right=stoi(clean_value);
+        if(cell1.get_type()==DataType::INT){
+            int left=cell1.as_int();
+            int right=stoi(statement.where_value);
 
-            if(clean_op=="=")match=(left==right);
-            else if(clean_op=="!=")match=(left!=right);
-            else if(clean_op==">")match=(left>right);
-            else if(clean_op=="<")match=(left<right);
-            else if(clean_op=="<=")match=(left<=right);
-            else if(clean_op==">=")match=(left>=right);
+            if(statement.where_operator=="=")match1=(left==right);
+            else if(statement.where_operator==">")match1=(left>right);
+            else if(statement.where_operator=="<")match1=(left<right);
+            else if(statement.where_operator==">=")match1=(left>=right);
+            else if(statement.where_operator=="<=")match1=(left<=right);
+            else if(statement.where_operator=="!=")match1=(left!=right);
         }else{
-            string left=cell.as_text();
-            if(clean_op=="=")match=(left==clean_value);
-            else if(clean_op=="!=")match=(left!=clean_value);
+            string left=cell1.as_text();
+
+            if(statement.where_operator=="=")match1=(left==statement.where_value);
+            else if(statement.where_operator=="!=")match1=(left!=statement.where_value);
         }
-        if(match){
+
+        bool match2=false;
+        if(statement.has_second_condition){
+            const Value &cell2=row[idx2];
+
+            if(cell2.get_type()==DataType::INT){
+                int left=cell2.as_int();
+                int right=stoi(statement.where_value2);
+
+                if(statement.where_operator2=="=")match2=(left==right);
+                else if(statement.where_operator2==">")match2=(left>right);
+                else if(statement.where_operator2=="<")match2=(left<right);
+                else if(statement.where_operator2==">=")match2=(left>=right);
+                else if(statement.where_operator2=="<=")match2=(left<=right);
+                else if(statement.where_operator2=="!=")match2=(left!=right);
+            }else{
+                string left=cell2.as_text();
+
+                if(statement.where_operator2=="=")match2=(left==statement.where_value2);
+                else if(statement.where_operator2=="!=")match2=(left!=statement.where_value2);
+            }
+        }
+        bool final_match;
+        if(statement.has_second_condition){
+            if(statement.logical_operator=="AND"){
+                final_match=match1&&match2;
+            }else{
+                final_match=match1||match2;
+            }
+        }else{
+            final_match=match1;
+        }
+
+        if(final_match){
             result.push_back(row);
         }
     }
