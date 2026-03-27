@@ -247,21 +247,31 @@ bool prepare_statement(const string &input,Statement &statement){
         size_t group_pos=string_to_upper(after_from).find("GROUP BY");
         size_t end_pos=string_to_upper(after_from).length();
         size_t join_pos=string_to_upper(after_from).find("JOIN");
+        size_t left_join_pos=string_to_upper(after_from).find("LEFT JOIN");
 
+        bool found_left_join=false;
+        if(left_join_pos!=string::npos){
+            found_left_join=true;
+            join_pos=left_join_pos;
+        }
 
         if(join_pos!=string::npos)end_pos=min(end_pos,join_pos);
+        size_t actual_join_pos=string_to_upper(after_from).find("JOIN");
         if(where_pos!=string::npos)end_pos=min(end_pos,where_pos);
         if(group_pos!=string::npos)end_pos=min(end_pos,group_pos);
         if(order_pos!=string::npos)end_pos=min(end_pos,order_pos);
         if(limit_pos!=string::npos)end_pos=min(end_pos,limit_pos);
         if(offset_pos!=string::npos)end_pos=min(end_pos,offset_pos);
 
+
+
         statement.table_name=trim_copy(after_from.substr(0,end_pos));
 
         if(join_pos!=string::npos){
             statement.has_join=true;
-
-            string join_part=trim_copy(after_from.substr(join_pos+4));
+            statement.is_left_join=found_left_join;
+            
+            string join_part=trim_copy(after_from.substr(actual_join_pos+4));
 
             stringstream join_stream(join_part);
 
@@ -338,8 +348,7 @@ bool prepare_statement(const string &input,Statement &statement){
 
                 size_t dot2=statement.where_column2.find('.');
                 if(dot2!=string::npos) statement.where_column2=statement.where_column2.substr(dot2+1);
-
-
+                
                 statement.where_value2=trim_copy(statement.where_value2);
 
                 if(!statement.where_value2.empty()&&statement.where_value2.back()==';')statement.where_value2.pop_back();

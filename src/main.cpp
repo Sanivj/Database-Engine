@@ -70,8 +70,12 @@ void execute_statement(const Statement &statement, Database &db){
             for(const auto &col:schema2.get_columns()){
                 combined_schema.add_column(col.name,col.type,col.is_primary_key);
             }
-
-            vector<vector<Value>>rows=table->inner_join(table2,statement.join_left_column,statement.join_right_column);
+            
+            if(statement.is_left_join){
+                rows=table->left_join(table2,statement.join_left_column,statement.join_right_column,schema2);
+            }else{
+                rows=table->inner_join(table2,statement.join_left_column,statement.join_right_column);
+            }
 
             if(statement.has_where_clause){
                 rows=table->filter_joined_rows(rows,combined_schema,statement);               

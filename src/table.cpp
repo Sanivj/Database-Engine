@@ -920,6 +920,72 @@ vector<vector<Value>>Table::inner_join(Table *other,const string &col1,const str
     return result;
 }
 
+vector<vector<Value>>Table::left_join(Table *other,const string &col1,const string &col2,const Schema &other_schema){
+    vector<vector<Value>>result;
+
+    const auto &cols1=schema.get_columns();
+    const auto &cols2=other_schema.get_columns();
+
+    int idx1=-1,idx2=-1;
+
+    for(size_t i=0;i<cols1.size();i++){
+        if(cols1[i].name==col1){
+            idx1=i;
+            break;
+        }
+    }
+
+    for(size_t i=0;i<cols2.size();i++){
+        if(cols2[i].name==col2){
+            idx2=i;
+            break;
+        }
+    }
+
+    if(idx1==-1||idx2==-1){
+        cout<<"Error: JOIN column not found.\n";
+        return result;
+    }
+
+    vector<Value>null_rows;
+    for(const auto &col:cols2){
+        if(col.type==DataType::INT){
+            null_rows.push_back(Value::from_int(0));
+        }else{
+            null_rows.push_back(Value::from_text("NULL"));
+        }
+    }
+
+    vector<vector<Value>>rows1=get_all_rows();
+    vector<vector<Value>>rows2=other->get_all_rows();
+
+    for(const auto &r1:rows1){
+        bool matched=false;
+
+        for(const auto &r2:rows2){
+            bool match=false;
+            if(r1[idx1].get_type()==DataType::INT){
+                 match=(r1[idx1].as_int()==r2[idx2].as_int());
+            }else{
+                match=(r1[idx1].as_text()==r2[idx2].as_text());
+            }
+
+            if(match){
+                vector<Value>combined=r1;
+                combined.insert(combined.end(),r2.begin(),r2.end());
+                result.push_back(combined);
+                matched=true;
+            }
+        }
+        if(!matched){
+            vector<Value>combined=r1;
+            combined.insert(combined.end(),null_rows.begin(),null_rows.end());
+            result.push_back(combined);
+        }
+    }
+    return result;
+}
+
 vector<vector<Value>>Table::filter_joined_rows(const vector<vector<Value>>&rows,const Schema &combined_schema,const Statement &statement){
     vector<vector<Value>>result;
     const auto &cols=combined_schema.get_columns();

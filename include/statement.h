@@ -66,6 +66,7 @@ struct Statement{
     string group_by_column;
     //JOINS
     bool has_join=false;
+    bool is_left_join=false;
     string join_table;
     string join_left_column;
     string join_right_column;
