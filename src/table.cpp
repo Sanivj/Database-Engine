@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstring>
 #include <algorithm>
+#include <climits>
+#include <map>
 
 static const uint32_t HEADER_SIZE=sizeof(uint32_t);
 static const uint32_t FIXED_TEXT_SIZE=256;
@@ -15,8 +17,12 @@ static string trim_copy(string s){
 
 Table::Table(const string &filename,const Schema &schema):pager(filename),schema(schema){
     if(pager.file_length>=HEADER_SIZE){
-        void *page=pager.get_page(0);
-        memcpy(&num_rows,page,HEADER_SIZE);
+        void *page = pager.get_page(0);
+        if(page != nullptr){
+            memcpy(&num_rows, page, HEADER_SIZE);
+        }else{
+            num_rows = 0;
+        }
     }else{
         num_rows=0;
     }
@@ -187,7 +193,13 @@ void Table::select_where(const string &column,const string &op,const string &val
         bool match=false;
         if(cell.get_type()==DataType::INT){
             int left=cell.as_int();
-            int right=stoi(clean_value);
+            int right;
+            try{
+                right=stoi(clean_value);
+            }catch(...){
+                cout<<"Error: Invalid number.\n";
+                return;
+            }
             if(clean_op=="=")match=(left==right);
             else if(clean_op==">")match=(left>right);
             else if(clean_op=="<")match=(left<right);
@@ -328,7 +340,13 @@ void Table::select_columns_where(const vector<string>&columns,const Schema &sche
         string op=clean_op;
         if(values[where_index].get_type()==DataType::INT){
             int left=values[where_index].as_int();
-            int right=stoi(clean_value);
+            int right;
+            try{
+                right=stoi(clean_value);
+            }catch(...){
+                cout<<"Error: Invalid number.\n";
+                return;
+            }
 
             if(op=="=")match=(left==right);
             else if(op==">")match=(left>right);
@@ -395,7 +413,13 @@ void Table::delete_where(const string &column,const string &op,const string &val
         bool match=false;
         if(cell.get_type()==DataType::INT){
             int left=cell.as_int();
-            int right=stoi(clean_value);
+            int right;
+            try{
+                right=stoi(clean_value);
+            }catch(...){
+                cout<<"Error: Invalid number.\n";
+                return;
+            }
 
             if(clean_op=="=")match=(left==right);
             else if(clean_op==">")match=(left>right);
@@ -477,7 +501,13 @@ void Table::update_where(const string &target_column,const string &new_value,con
 
         if(cell.get_type()==DataType::INT){
             int left=cell.as_int();
-            int right=stoi(clean_where_value);
+            int right;
+            try{
+                right=stoi(clean_where_value);
+            }catch(...){
+                cout<<"Error: Invalid number.\n";
+                return;
+            }
 
             if(clean_where_op=="=")match=(left==right);
             else if(clean_where_op==">")match=(left>right);
@@ -494,7 +524,14 @@ void Table::update_where(const string &target_column,const string &new_value,con
 
         if(match){
             if(cols[target_index].type==DataType::INT){
-                row[target_index]=Value::from_int(stoi(clean_new_value));
+                int val;
+                try{
+                    val=stoi(clean_new_value);
+                }catch(...){
+                    cout<<"Error: Invalid number.\n";
+                    return;
+                }
+                row[target_index]=Value::from_int(val);
             }else{
                 row[target_index]=Value::from_text(clean_new_value);
             }
@@ -529,7 +566,7 @@ void Table::update_where(const string &target_column,const string &new_value,con
 
 vector<vector<Value>>Table::filter_rows(const Statement &statement){
     vector<vector<Value>>result;
-
+    string logical_op=trim_copy(statement.logical_operator);
     vector<vector<Value>>all_rows=get_all_rows();
     const auto &cols=schema.get_columns();
 
@@ -567,19 +604,27 @@ vector<vector<Value>>Table::filter_rows(const Statement &statement){
 
         if(cell1.get_type()==DataType::INT){
             int left=cell1.as_int();
-            int right=stoi(statement.where_value);
+            int right;
+            try{
+                string val=trim_copy(statement.where_value);
+                if(!val.empty()&&val.back()==';')val.pop_back();
+                right=stoi(val);
+            }catch(...){
+                cout<<"Error: Invalid number.\n";
+                return {};
+            }
 
-            if(statement.where_operator=="=")match1=(left==right);
-            else if(statement.where_operator==">")match1=(left>right);
-            else if(statement.where_operator=="<")match1=(left<right);
-            else if(statement.where_operator==">=")match1=(left>=right);
-            else if(statement.where_operator=="<=")match1=(left<=right);
-            else if(statement.where_operator=="!=")match1=(left!=right);
+            if(trim_copy(statement.where_operator)=="=")match1=(left==right);
+            else if(trim_copy(statement.where_operator)==">")match1=(left>right);
+            else if(trim_copy(statement.where_operator)=="<")match1=(left<right);
+            else if(trim_copy(statement.where_operator)==">=")match1=(left>=right);
+            else if(trim_copy(statement.where_operator)=="<=")match1=(left<=right);
+            else if(trim_copy(statement.where_operator)=="!=")match1=(left!=right);
         }else{
             string left=cell1.as_text();
 
-            if(statement.where_operator=="=")match1=(left==statement.where_value);
-            else if(statement.where_operator=="!=")match1=(left!=statement.where_value);
+            if(trim_copy(statement.where_operator)=="=")match1=(left==trim_copy(statement.where_value));
+            else if(trim_copy(statement.where_operator)=="!=")match1=(left!=trim_copy(statement.where_value));
         }
 
         bool match2=false;
@@ -588,24 +633,32 @@ vector<vector<Value>>Table::filter_rows(const Statement &statement){
 
             if(cell2.get_type()==DataType::INT){
                 int left=cell2.as_int();
-                int right=stoi(statement.where_value2);
+                int right;
+                try{
+                    string val=trim_copy(statement.where_value2);
+                    if(!val.empty()&&val.back()==';')val.pop_back();
+                    right=stoi(val);
+                }catch(...){
+                    cout<<"Error: Invalid number.\n";
+                    return {};
+                }
 
-                if(statement.where_operator2=="=")match2=(left==right);
-                else if(statement.where_operator2==">")match2=(left>right);
-                else if(statement.where_operator2=="<")match2=(left<right);
-                else if(statement.where_operator2==">=")match2=(left>=right);
-                else if(statement.where_operator2=="<=")match2=(left<=right);
-                else if(statement.where_operator2=="!=")match2=(left!=right);
+                if(trim_copy(statement.where_operator2)=="=")match2=(left==right);
+                else if(trim_copy(statement.where_operator2)==">")match2=(left>right);
+                else if(trim_copy(statement.where_operator2)=="<")match2=(left<right);
+                else if(trim_copy(statement.where_operator2)==">=")match2=(left>=right);
+                else if(trim_copy(statement.where_operator2)=="<=")match2=(left<=right);
+                else if(trim_copy(statement.where_operator2)=="!=")match2=(left!=right);
             }else{
                 string left=cell2.as_text();
 
-                if(statement.where_operator2=="=")match2=(left==statement.where_value2);
-                else if(statement.where_operator2=="!=")match2=(left!=statement.where_value2);
+                if(trim_copy(statement.where_operator2)=="=")match2=(left==trim_copy(statement.where_value2));
+                else if(trim_copy(statement.where_operator2)=="!=")match2=(left!=trim_copy(statement.where_value2));
             }
         }
         bool final_match;
         if(statement.has_second_condition){
-            if(statement.logical_operator=="AND"){
+            if(logical_op=="AND"){
                 final_match=match1&&match2;
             }else{
                 final_match=match1||match2;
@@ -714,4 +767,128 @@ void Table::sort_rows(vector<vector<Value>>&rows,const string &order_by_column,b
 
         return descending?!result:result;
     });
+}
+
+void Table::aggregate(const vector<vector<Value>>&rows,const Statement &statement){
+    const auto &cols=schema.get_columns();
+
+    int col_index=-1;
+
+    if(statement.aggregate_column!="*"){
+        for(size_t i=0;i<cols.size();i++){
+            if(cols[i].name==statement.aggregate_column){
+                col_index=i;
+                break;
+            }
+        }
+        if(col_index==-1){
+            cout<<"Error: Column does not exist.\n";
+            return;
+        }
+    }
+
+    if(statement.aggregate_type==AggregateType::COUNT){
+        cout<<rows.size()<<"\n";
+        return;
+    }
+
+    int sum=0;
+    int count=0;
+    int min_val=INT_MAX;
+    int max_val=INT_MIN;
+
+    for(const auto &row:rows){
+        int value=row[col_index].as_int();
+
+        sum+=value;
+        count++;
+
+        if(value<min_val)min_val=value;
+        if(value>max_val)max_val=value;
+    }
+
+    if(statement.aggregate_type==AggregateType::SUM){
+        cout<<sum<<"\n";
+    }else if(statement.aggregate_type==AggregateType::AVG){
+        cout<<(count==0?0:sum/count)<<"\n";
+    }else if(statement.aggregate_type==AggregateType::MIN){
+        cout<<min_val<<"\n";
+    }else if(statement.aggregate_type==AggregateType::MAX){
+        cout<<max_val<<"\n";
+    }
+}
+
+void Table::group_by_aggregate(const vector<vector<Value>>&rows,const Statement &statement){
+    const auto &cols=schema.get_columns();
+
+    int group_index=-1;
+    int agg_index=-1;
+
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==statement.group_by_column){
+            group_index=i;
+        }
+        if(cols[i].name==statement.aggregate_column){
+            agg_index=i;
+        }
+    }
+    map<string,int>count_map;
+    for(const auto &row:rows){
+        string key=row[group_index].as_text();
+        count_map[key]++;
+    }
+
+    for(auto &p:count_map){
+        cout<<"("<<p.first<<", "<<p.second<<")\n";
+    }
+}
+
+vector<vector<Value>>Table::inner_join(Table *other,const string &col1,const string &col2){
+    vector<vector<Value>>result;
+
+    const auto &cols1=schema.get_columns();
+    const auto &cols2=other->schema.get_columns();
+
+    int idx1=-1,idx2=-1;
+
+    for(size_t i=0;i<cols1.size();i++){
+        if(cols1[i].name==col1){
+            idx1=i;
+            break;
+        }
+    }
+
+    for(size_t i=0;i<cols2.size();i++){
+        if(cols2[i].name==col2){
+            idx2=i;
+            break;
+        }
+    }
+
+    if(idx1==-1||idx2==-1){
+        cout<<"Error: JOIN column not found.\n";
+        return result;
+    }
+
+    vector<vector<Value>>rows1=get_all_rows();
+    vector<vector<Value>>rows2=other->get_all_rows();
+
+    for(const auto &r1:rows1){
+        for(const auto &r2:rows2){
+            bool match=false;
+
+            if(r1[idx1].get_type()==DataType::INT){
+                match=(r1[idx1].as_int()==r2[idx2].as_int());
+            }else{
+                match=(r1[idx1].as_text()==r2[idx2].as_text());
+            }
+
+            if(match){
+                vector<Value>combined=r1;
+                combined.insert(combined.end(),r2.begin(),r2.end());
+                result.push_back(combined);
+            }
+        }
+    }
+    return result;
 }

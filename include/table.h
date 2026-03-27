@@ -25,6 +25,9 @@ class Table{
         void print_rows(const vector<vector<Value>>&rows)const;
         void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema)const;
         void sort_rows(vector<vector<Value>>&rows,const string &order_by_column,bool descending)const;
+        void aggregate(const vector<vector<Value>>&rows,const Statement &statement);
+        void group_by_aggregate(const vector<vector<Value>> &rows,const Statement &statement);
+        vector<vector<Value>>inner_join(Table *other,const string &col1,const string &col2);
     private:
         uint32_t compute_row_size() const;
         void serialize_row(const vector<Value> &values,void *destination) const;

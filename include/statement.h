@@ -16,6 +16,15 @@ enum class StatementType{
     UPDATE_ROWS
 };
 
+enum class AggregateType{
+    NONE,
+    COUNT,
+    SUM,
+    AVG,
+    MIN,
+    MAX
+};
+
 struct Statement{
     StatementType type;
 
@@ -47,6 +56,19 @@ struct Statement{
     string where_operator2;
     string where_value2;
     string logical_operator;
+    //OFFSET
+    bool has_offset=false;
+    int offset_count=0;
+    //AGGREGATE
+    AggregateType aggregate_type=AggregateType::NONE;
+    string aggregate_column;
+    bool has_group_by=false;
+    string group_by_column;
+    //JOINS
+    bool has_join=false;
+    string join_table;
+    string join_left_column;
+    string join_right_column;
 };
 
 bool prepare_statement(const string &input,Statement &statement);

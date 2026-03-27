@@ -53,6 +53,20 @@ void execute_statement(const Statement &statement, Database &db){
 
         vector<vector<Value>>rows;
 
+        if(statement.has_join){
+            if(!db.table_exists(statement.join_table)){
+                cout<<"Error: Join table does not exist.\n";
+                return;
+            }
+
+            Table *table2=db.get_table(statement.join_table);
+
+            vector<vector<Value>>rows=table->inner_join(table2,statement.join_left_column,statement.join_right_column);
+
+            table->print_rows(rows);
+            return;
+        }
+
         if(statement.has_where_clause){
             rows=table->filter_rows(
                 statement
@@ -65,10 +79,27 @@ void execute_statement(const Statement &statement, Database &db){
             table->sort_rows(rows,statement.order_by_column,statement.order_desc);
         }
 
+        if(statement.has_offset){
+            if(statement.offset_count<rows.size()){
+                rows.erase(rows.begin(),rows.begin()+statement.offset_count);
+            }else{
+                rows.clear();
+            }
+        }
+
         if(statement.has_limit){
             if(statement.limit_count<rows.size()){
                 rows.resize(statement.limit_count);
             }
+        }
+
+        if(statement.aggregate_type!=AggregateType::NONE){
+            if(statement.has_group_by){
+                table->group_by_aggregate(rows,statement);
+            }else{
+                table->aggregate(rows,statement);
+            }
+            return;
         }
 
         if(statement.select_all_columns){

@@ -69,11 +69,18 @@ bool prepare_statement(const string &input,Statement &statement){
             col_stream>>col_name;
             col_stream>>col_type;
             bool is_primary=false;
-            col_stream>>maybe_primary>>maybe_key;
+            
             if(string_to_upper(maybe_primary)=="PRIMARY"&&string_to_upper(maybe_key)=="KEY"){
                 is_primary=true;
             }
-
+            if(col_stream >> maybe_primary){
+                if(string_to_upper(maybe_primary) == "PRIMARY"){
+                    col_stream >> maybe_key;
+                    if(string_to_upper(maybe_key) == "KEY"){
+                        is_primary = true;
+                    }
+                }
+            }
             DataType type;
             if(string_to_upper(col_type)=="INT"){
                 type=DataType::INT;
@@ -115,10 +122,15 @@ bool prepare_statement(const string &input,Statement &statement){
         getline(ss,rest);
 
         size_t open_paren=rest.find('(');
-        size_t close_paren=rest.find(')');
+        size_t close_paren=rest.rfind(')');
 
         if(open_paren==string::npos||close_paren==string::npos){
             cout<<"Syntax error in VALUES.\n";
+            return false;
+        }
+
+        if(open_paren >= close_paren){
+            cout<<"Syntax error in column definition.\n";
             return false;
         }
 
@@ -151,70 +163,164 @@ bool prepare_statement(const string &input,Statement &statement){
         statement.limit_count=0;
         statement.has_second_condition=false;
         statement.logical_operator="";
+        statement.has_offset=false;
+        statement.offset_count=0;
+        statement.aggregate_type=AggregateType::NONE;
+        statement.aggregate_column="";
+        statement.has_group_by=false;
+        statement.group_by_column="";
 
         string rest;
         getline(ss,rest);
         rest=trim_copy(rest);
 
-        size_t from_pos=rest.find("FROM");
+        size_t from_pos=string_to_upper(rest).find("FROM");
         if(from_pos==string::npos){
             cout<<"Syntax error. Expected FROM.\n";
             return false;
         }
 
-        string column_part=trim_copy(rest.substr(0,from_pos));
+        string columns_part=trim_copy(rest.substr(0,from_pos));
         string after_from=trim_copy(rest.substr(from_pos+4));
 
-        if(column_part=="*"){
+        string upper_col=string_to_upper(columns_part);
+        if(columns_part=="*"){
             statement.select_all_columns=true;
         }else{
-            statement.select_all_columns=false;
-            stringstream col_stream(column_part);
+            stringstream col_stream(columns_part);
             string col;
 
             while(getline(col_stream,col,',')){
                 col=trim_copy(col);
-                if(!col.empty()&&col.back()==';'){
-                    col.pop_back();
+                string upper=string_to_upper(col);
+                if(upper.find("COUNT(")==0){
+                    statement.aggregate_type=AggregateType::COUNT;
+
+                    size_t open=col.find('(');
+                    size_t close=col.find(')');
+                    if(open!=string::npos&&close!=string::npos){
+                        statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
+                    }
+                }else if(upper.find("SUM(")==0){
+                    statement.aggregate_type=AggregateType::SUM;
+
+                    size_t open=col.find('(');
+                    size_t close=col.find(')');
+                    if(open!=string::npos&&close!=string::npos){
+                        statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
+                    }
+                }else if(upper.find("AVG(")==0){
+                    statement.aggregate_type=AggregateType::AVG;
+
+                    size_t open=col.find('(');
+                    size_t close=col.find(')');
+                    if(open!=string::npos&&close!=string::npos){
+                        statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
+                    }
+                }else if(upper.find("MIN(")==0){
+                    statement.aggregate_type=AggregateType::MIN;
+
+                    size_t open=col.find('(');
+                    size_t close=col.find(')');
+                    if(open!=string::npos&&close!=string::npos){
+                        statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
+                    }
+                }else if(upper.find("MAX(")==0){
+                    statement.aggregate_type=AggregateType::MAX;
+
+                    size_t open=col.find('(');
+                    size_t close=col.find(')');
+                    if(open!=string::npos&&close!=string::npos){
+                        statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
+                    }
+                }else{
+                    statement.select_columns.push_back(col);
                 }
-                col=trim_copy(col);
-                statement.select_columns.push_back(col);
             }
         }
-        size_t where_pos=after_from.find("WHERE");
-        size_t order_pos=after_from.find("ORDER BY");
-        size_t limit_pos=after_from.find("LIMIT");
+        size_t where_pos=string_to_upper(after_from).find("WHERE");
+        size_t order_pos=string_to_upper(after_from).find("ORDER BY");
+        size_t limit_pos=string_to_upper(after_from).find("LIMIT");
+        size_t offset_pos=string_to_upper(after_from).find("OFFSET");
+        size_t group_pos=string_to_upper(after_from).find("GROUP BY");
+        size_t end_pos=string_to_upper(after_from).length();
+        size_t join_pos=string_to_upper(after_from).find("JOIN");
 
-        if(where_pos==string::npos&&order_pos==string::npos&&limit_pos==string::npos){
-            statement.table_name=trim_copy(after_from);
+
+        if(join_pos!=string::npos)end_pos=min(end_pos,join_pos);
+        if(where_pos!=string::npos)end_pos=min(end_pos,where_pos);
+        if(group_pos!=string::npos)end_pos=min(end_pos,group_pos);
+        if(order_pos!=string::npos)end_pos=min(end_pos,order_pos);
+        if(limit_pos!=string::npos)end_pos=min(end_pos,limit_pos);
+        if(offset_pos!=string::npos)end_pos=min(end_pos,offset_pos);
+
+        statement.table_name=trim_copy(after_from.substr(0,end_pos));
+
+        if(join_pos!=string::npos){
+            statement.has_join=true;
+
+            string join_part=trim_copy(after_from.substr(join_pos+4));
+
+            stringstream join_stream(join_part);
+
+            join_stream>>statement.join_table;
+
+            string on_word;
+            join_stream>>on_word;
+
+            if(string_to_upper(on_word)!="ON"){
+                cout<<"Syntax Error. Expected ON.\n";
+                return false;
+            }
+
+            string left_expr,eq,right_expr;
+
+            join_stream>>left_expr;
+            join_stream>>eq;
+            join_stream>>right_expr;
+
+            size_t dot1=left_expr.find('.');
+            size_t dot2=right_expr.find('.');
+
+            if(dot1==string::npos||dot2==string::npos){
+                cout<<"Syntax error in JOIN condition.\n";
+                return false;
+            }
+
+            statement.join_left_column=left_expr.substr(dot1+1);
+            statement.join_right_column=right_expr.substr(dot2+1);
         }
 
-        else if(where_pos==string::npos&&order_pos==string::npos&&limit_pos!=string::npos){
-            statement.table_name=trim_copy(after_from.substr(0,limit_pos));
-        }
+        if(where_pos!=string::npos){
+            statement.has_where_clause=true;
 
-        else if(where_pos!=string::npos&&order_pos==string::npos){
-            statement.table_name=trim_copy(after_from.substr(0,where_pos));
             string where_part;
-            if(limit_pos!=string::npos){
-                where_part=trim_copy(after_from.substr(where_pos+5,limit_pos-(where_pos+5)));
-            }else{
-                where_part=trim_copy(after_from.substr(where_pos+5));
-            }
-            statement.has_where_clause=true;
+
+            size_t end_where=after_from.length();
+
+            if(group_pos!=string::npos&&group_pos>where_pos)end_where=group_pos;
+            else if(order_pos!=string::npos&&order_pos>where_pos)end_where=order_pos;
+            else if(limit_pos!=string::npos&&limit_pos>where_pos)end_where=limit_pos;
+            else if(offset_pos!=string::npos&&offset_pos>where_pos)end_where=offset_pos;
+
+            where_part=trim_copy(after_from.substr(where_pos+5,end_where-(where_pos+5)));
+
             stringstream where_stream(where_part);
+
             where_stream>>statement.where_column;
             where_stream>>statement.where_operator;
             where_stream>>statement.where_value;
 
             statement.where_value=trim_copy(statement.where_value);
 
-            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
-                statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
-            }
+            if(!statement.where_value.empty()&&statement.where_value.back()==';')statement.where_value.pop_back();
+
+            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\'')statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
 
             string maybe_logical;
+
             where_stream>>maybe_logical;
+
             maybe_logical=string_to_upper(trim_copy(maybe_logical));
 
             if(maybe_logical=="AND"||maybe_logical=="OR"){
@@ -227,57 +333,29 @@ bool prepare_statement(const string &input,Statement &statement){
 
                 statement.where_value2=trim_copy(statement.where_value2);
 
-                if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\''){
-                    statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
-                }
+                if(!statement.where_value2.empty()&&statement.where_value2.back()==';')statement.where_value2.pop_back();
+
+                if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\'')statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
             }
         }
 
-        else if(where_pos==string::npos&&order_pos!=string::npos){
-            statement.table_name=trim_copy(after_from.substr(0,order_pos));
-        }
+        if(group_pos!=string::npos){
+            statement.has_group_by=true;
 
-        else{
-            statement.table_name=trim_copy(after_from.substr(0,where_pos));
-            size_t where_end;
-            if(order_pos!=string::npos){
-                where_end=order_pos;
-            }else if(limit_pos!=string::npos){
-                where_end=limit_pos;
-            }else{
-                where_end=after_from.length();
+            string group_part;
+
+            size_t end_pos=after_from.length();
+
+            if(order_pos!=string::npos&&order_pos>group_pos){
+                end_pos=order_pos;
+            }else if(limit_pos!=string::npos&&limit_pos>group_pos){
+                end_pos=limit_pos;
+            }else if(offset_pos!=string::npos&&offset_pos>group_pos){
+                end_pos=offset_pos;
             }
-            string where_part=trim_copy(after_from.substr(where_pos+5,where_end-(where_pos+5)));
-            statement.has_where_clause=true;
-            stringstream where_stream(where_part);
-            where_stream>>statement.where_column;
-            where_stream>>statement.where_operator;
-            where_stream>>statement.where_value;
-
-            statement.where_value=trim_copy(statement.where_value);
-
-            if(!statement.where_value.empty()&&statement.where_value.front()=='\''&&statement.where_value.back()=='\''){
-                statement.where_value=statement.where_value.substr(1,statement.where_value.size()-2);
-            }
-
-            string maybe_logical;
-            where_stream>>maybe_logical;
-            maybe_logical=string_to_upper(trim_copy(maybe_logical));
-
-            if(maybe_logical=="AND"||maybe_logical=="OR"){
-                statement.has_second_condition=true;
-                statement.logical_operator=maybe_logical;
-
-                where_stream>>statement.where_column2;
-                where_stream>>statement.where_operator2;
-                where_stream>>statement.where_value2;
-
-                statement.where_value2=trim_copy(statement.where_value2);
-
-                if(!statement.where_value2.empty()&&statement.where_value2.front()=='\''&&statement.where_value2.back()=='\''){
-                    statement.where_value2=statement.where_value2.substr(1,statement.where_value2.size()-2);
-                }
-            }
+            group_part=trim_copy(after_from.substr(group_pos+8,end_pos-(group_pos+8)));
+            stringstream group_stream(group_part);
+            group_stream>>statement.group_by_column;
         }
 
         if(order_pos!=string::npos){
@@ -313,6 +391,15 @@ bool prepare_statement(const string &input,Statement &statement){
             }
             stringstream limit_stream(limit_part);
             limit_stream>>statement.limit_count;
+        }
+
+        if(offset_pos!=string::npos){
+            statement.has_offset=true;
+
+            string offset_part;
+            offset_part=trim_copy(after_from.substr(offset_pos+6));
+            stringstream offset_stream(offset_part);
+            offset_stream>>statement.offset_count;
         }
         
         return true;
