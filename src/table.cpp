@@ -14,6 +14,12 @@ static string trim_copy(string s){
     size_t end = s.find_last_not_of(" \t");
     return s.substr(start, end - start + 1);
 }
+static void row_slot(uint32_t row_index,uint32_t row_size,uint32_t &out_page,uint32_t &out_offset){
+    uint32_t rows_per_page=PAGE_SIZE/row_size;
+    if(rows_per_page==0)rows_per_page=1;
+    out_page=1+(row_index/rows_per_page);
+    out_offset=(row_index%rows_per_page)*row_size;
+}
 
 Table::Table(const string &filename,const Schema &schema):pager(filename),schema(schema){
     if(pager.file_length>=HEADER_SIZE){
@@ -82,9 +88,8 @@ void Table::insert_row(const vector<Value> &values){
         }
     }
     uint32_t row_size=compute_row_size();
-    uint32_t offset=HEADER_SIZE+num_rows*row_size;
-    uint32_t page_num=offset/PAGE_SIZE;
-    uint32_t page_offset=offset%PAGE_SIZE;
+    uint32_t page_num,page_offset;
+    row_slot(num_rows,row_size,page_num,page_offset);
 
     void *page=pager.get_page(page_num);
     void *dest=(char*)page+page_offset;
@@ -100,9 +105,8 @@ void Table::insert_row(const vector<Value> &values){
 void Table::select_all(){
     uint32_t row_size=compute_row_size();
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -134,9 +138,8 @@ bool Table::primary_key_exists(const Value &pk_value){
     uint32_t row_size=compute_row_size();
 
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -181,9 +184,8 @@ void Table::select_where(const string &column,const string &op,const string &val
     }
     uint32_t row_size=compute_row_size();
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -236,9 +238,8 @@ vector<vector<Value>>Table::get_all_rows(){
     vector<vector<Value>>rows;
     uint32_t row_size=compute_row_size();
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page =pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -264,9 +265,8 @@ void Table::select_columns(const vector<string>&columns,const Schema &schema){
     }
     uint32_t row_size=compute_row_size();
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -328,9 +328,8 @@ void Table::select_columns_where(const vector<string>&columns,const Schema &sche
     }
     uint32_t row_size=compute_row_size();
     for(uint32_t i=0;i<num_rows;i++){
-        uint32_t offset=HEADER_SIZE+i*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *source=(char*)page+page_offset;
@@ -446,9 +445,8 @@ void Table::delete_where(const string &column,const string &op,const string &val
     uint32_t rows_size=compute_row_size();
 
     for(const auto &row:kept_rows){
-        uint32_t offset=HEADER_SIZE+num_rows*rows_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(num_rows,rows_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *dest=(char*)page+page_offset;
@@ -544,12 +542,11 @@ void Table::update_where(const string &target_column,const string &new_value,con
     memset(first_page,0,PAGE_SIZE);
     memcpy(first_page,&num_rows,HEADER_SIZE);
 
-    uint32_t row_size=compute_row_size();
+    uint32_t rows_size=compute_row_size();
 
     for(const auto &row:all_rows){
-        uint32_t offset=HEADER_SIZE+num_rows*row_size;
-        uint32_t page_num=offset/PAGE_SIZE;
-        uint32_t page_offset=offset%PAGE_SIZE;
+        uint32_t page_num,page_offset;
+        row_slot(num_rows,rows_size,page_num,page_offset);
 
         void *page=pager.get_page(page_num);
         void *dest=(char*)page+page_offset;
@@ -832,14 +829,44 @@ void Table::group_by_aggregate(const vector<vector<Value>>&rows,const Statement 
             agg_index=i;
         }
     }
-    map<string,int>count_map;
-    for(const auto &row:rows){
-        string key=row[group_index].as_text();
-        count_map[key]++;
+
+    if(group_index==-1){
+        cout<<"Error: GROUP BY column not found.\n";
+        return;
     }
 
-    for(auto &p:count_map){
-        cout<<"("<<p.first<<", "<<p.second<<")\n";
+    if(statement.aggregate_type!=AggregateType::COUNT&&agg_index==-1){
+        cout<<"Error: AGGREGATE column not found.\n";
+        return;
+    }
+
+    map<string,tuple<int,int,int,int>>groups;
+    for(const auto &row:rows){
+        string key=(cols[group_index].type==DataType::INT)?to_string(row[group_index].as_int()):row[group_index].as_text();
+        auto &[cnt,sum,mn,mx]=groups[key];
+        cnt++;
+        if(agg_index!=-1){
+            int v=row[agg_index].as_int();
+            sum+=v;
+            if(cnt==1){
+                mn=v;
+                mx=v;
+            }else{
+                mn=min(mn,v);
+                mx=max(mx,v);
+            }
+        }
+    }
+    
+    for(auto &[key,tup]:groups){
+        auto &[cnt,sum,mn,mx]=tup;
+        int result=0;
+        if(statement.aggregate_type==AggregateType::COUNT) result=cnt;
+        else if(statement.aggregate_type==AggregateType::SUM) result=sum;
+        else if(statement.aggregate_type==AggregateType::AVG) result=(cnt?sum/cnt:0);
+        else if(statement.aggregate_type==AggregateType::MIN) result=mn;
+        else if(statement.aggregate_type==AggregateType::MAX) result=mx;
+        cout<<"("<<key<<", "<<result<<")\n";
     }
 }
 
@@ -891,4 +918,96 @@ vector<vector<Value>>Table::inner_join(Table *other,const string &col1,const str
         }
     }
     return result;
+}
+
+vector<vector<Value>>Table::filter_joined_rows(const vector<vector<Value>>&rows,const Schema &combined_schema,const Statement &statement){
+    vector<vector<Value>>result;
+    const auto &cols=combined_schema.get_columns();
+
+    int idx1=-1;
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==statement.where_column){
+            idx1=i;
+            break;
+        }
+    }
+    if(idx1==-1){
+        cout<<"Error: Column '"<<statement.where_column<<"' not found.\n";
+        return result;
+    }
+    int idx2=-1;
+    if(statement.has_second_condition){
+        for(size_t i=0;i<cols.size();i++){
+            if(cols[i].name==statement.where_column2){
+                idx2=i;
+                break;
+            }
+        }
+        if(idx2==-1){
+            cout<<"Error: Column '"<<statement.where_column2<<"' not found.\n";
+            return result;
+        }
+    }
+    for(const auto &row:rows){
+        auto eval=[&](int idx,const string &op,const string &val)->bool{
+            const Value &cell=row[idx];
+            if(cell.get_type()==DataType::INT){
+                int left=cell.as_int();
+                int right;
+                try
+                {
+                   right=stoi(val); 
+                }
+                catch(...)
+                {
+                    return false;
+                }
+                if(op=="=")return left==right;
+                if(op==">")return left>right;
+                if(op=="<")return left<right;
+                if(op==">=")return left>=right;
+                if(op=="<=")return left<=right;
+                if(op=="!=")return left!=right; 
+            }else{
+                if(op=="=")return cell.as_text()==val;
+                if(op=="!=")return cell.as_text()!=val;
+            }
+            return false;
+        };
+
+        bool match1=eval(idx1,statement.where_operator,statement.where_value);
+        bool match2=true;
+        if(statement.has_second_condition){
+            match2=eval(idx2,statement.where_operator2,statement.where_value2);
+            if(statement.logical_operator=="AND"){
+                if(!(match1&&match2))continue;
+            }else{
+                if(!(match1||match2))continue;
+            }
+        }else{
+            if(!match1)continue;
+        }
+        result.push_back(row);
+    }
+    return result;
+}
+
+void Table::sort_joined_rows(vector<vector<Value>>&rows,const Schema &combined_schema,const string &order_by_column,bool descending)const{
+    const auto &cols=combined_schema.get_columns();
+    int idx=-1;
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==order_by_column){
+            idx=i;
+            break;
+        }
+    }
+    if(idx==-1){
+        cout<<"Error: ORDER BY column not found.\n";
+        return;
+    }
+
+    sort(rows.begin(),rows.end(),[&](const vector<Value>&a,const vector<Value>&b){
+        bool res=(a[idx].get_type()==DataType::INT)?(a[idx].as_int()<b[idx].as_int()):(a[idx].as_text()<b[idx].as_text());
+        return descending?!res:res;
+    });
 }

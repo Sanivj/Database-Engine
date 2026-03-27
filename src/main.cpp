@@ -60,10 +60,46 @@ void execute_statement(const Statement &statement, Database &db){
             }
 
             Table *table2=db.get_table(statement.join_table);
+            const Schema &schema2=db.get_schema(statement.join_table);
+
+            Schema combined_schema;
+            combined_schema.set_table_name(statement.table_name+"_"+statement.join_table);
+            for(const auto &col:schema.get_columns()){
+                combined_schema.add_column(col.name,col.type,col.is_primary_key);
+            }
+            for(const auto &col:schema2.get_columns()){
+                combined_schema.add_column(col.name,col.type,col.is_primary_key);
+            }
 
             vector<vector<Value>>rows=table->inner_join(table2,statement.join_left_column,statement.join_right_column);
 
-            table->print_rows(rows);
+            if(statement.has_where_clause){
+                rows=table->filter_joined_rows(rows,combined_schema,statement);               
+            }
+
+            if(statement.has_order_by){
+                table->sort_joined_rows(rows,combined_schema,statement.order_by_column,statement.order_desc);
+            }
+
+            if(statement.has_offset){
+                if((size_t)statement.offset_count<rows.size()){
+                    rows.erase(rows.begin(),rows.begin()+statement.offset_count);
+                }else{
+                    rows.clear();
+                }
+            }
+
+            if(statement.has_limit){
+                if((size_t)statement.limit_count<rows.size()){
+                    rows.resize(statement.limit_count);
+                }
+            }
+
+            if(statement.select_all_columns){
+                table->print_rows(rows);
+            }else{
+                table->print_selected_columns(rows,statement.select_columns,combined_schema);
+            }
             return;
         }
 

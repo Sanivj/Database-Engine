@@ -28,6 +28,8 @@ class Table{
         void aggregate(const vector<vector<Value>>&rows,const Statement &statement);
         void group_by_aggregate(const vector<vector<Value>> &rows,const Statement &statement);
         vector<vector<Value>>inner_join(Table *other,const string &col1,const string &col2);
+        vector<vector<Value>>filter_joined_rows(const vector<vector<Value>>&rows,const Schema &combined_schema,const Statement &statement);
+        void sort_joined_rows(vector<vector<Value>>&rows,const Schema &combined_schema,const string &order_by_column,bool descending)const;
     private:
         uint32_t compute_row_size() const;
         void serialize_row(const vector<Value> &values,void *destination) const;

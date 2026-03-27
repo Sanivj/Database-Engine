@@ -49,4 +49,5 @@ void Pager::flush(uint32_t page_num){
     if(!pages[page_num])return;
     file.seekp(page_num*PAGE_SIZE);
     file.write(pages[page_num].get(),PAGE_SIZE);
+    file.flush();
 }

@@ -234,6 +234,8 @@ bool prepare_statement(const string &input,Statement &statement){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
                 }else{
+                    size_t dot=col.find('.');
+                    if(dot!=string::npos)col=col.substr(dot+1);
                     statement.select_columns.push_back(col);
                 }
             }
@@ -311,6 +313,9 @@ bool prepare_statement(const string &input,Statement &statement){
             where_stream>>statement.where_operator;
             where_stream>>statement.where_value;
 
+            size_t dot1=statement.where_column.find('.');
+            if(dot1!=string::npos) statement.where_column=statement.where_column.substr(dot1+1);
+
             statement.where_value=trim_copy(statement.where_value);
 
             if(!statement.where_value.empty()&&statement.where_value.back()==';')statement.where_value.pop_back();
@@ -330,6 +335,10 @@ bool prepare_statement(const string &input,Statement &statement){
                 where_stream>>statement.where_column2;
                 where_stream>>statement.where_operator2;
                 where_stream>>statement.where_value2;
+
+                size_t dot2=statement.where_column2.find('.');
+                if(dot2!=string::npos) statement.where_column2=statement.where_column2.substr(dot2+1);
+
 
                 statement.where_value2=trim_copy(statement.where_value2);
 
@@ -368,6 +377,10 @@ bool prepare_statement(const string &input,Statement &statement){
             if(!statement.order_by_column.empty()&&statement.order_by_column.back()==';'){
                 statement.order_by_column.pop_back();
             }
+
+            size_t dot=statement.order_by_column.find('.');
+            if(dot!=string::npos) statement.order_by_column=statement.order_by_column.substr(dot+1);
+
             string maybe_dir;
             order_stream>>maybe_dir;
             maybe_dir=trim_copy(maybe_dir);
