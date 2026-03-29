@@ -174,6 +174,8 @@ bool prepare_statement(const string &input,Statement &statement){
         statement.has_group_by=false;
         statement.group_by_column="";
         statement.has_distinct=false;
+        statement.join_table_alias="";
+        statement.table_alias="";
 
         string rest;
         getline(ss,rest);
@@ -296,7 +298,18 @@ bool prepare_statement(const string &input,Statement &statement){
 
 
 
-        statement.table_name=trim_copy(after_from.substr(0,end_pos));
+        string table_part=trim_copy(after_from.substr(0,end_pos));
+        {
+            stringstream tss(table_part);
+            string tname,talias;
+            tss>>tname;
+            statement.table_name=tname;
+            if(tss>>talias){
+                statement.table_alias=talias;
+            }else{
+                statement.table_alias=tname;
+            }
+        }
 
         if(join_pos!=string::npos){
             statement.has_join=true;
@@ -308,10 +321,20 @@ bool prepare_statement(const string &input,Statement &statement){
 
             stringstream join_stream(join_part);
 
-            join_stream>>statement.join_table;
+            string jt;
+            join_stream>>jt;
+            statement.join_table=jt;
 
-            string on_word;
-            join_stream>>on_word;
+            string peek;
+            streampos before=join_stream.tellg();
+            join_stream>>peek;
+            if(string_to_upper(peek)!="ON"){
+                statement.join_table_alias=peek;
+                join_stream>>peek;
+            }else{
+                statement.join_table_alias=jt;
+            }
+            string on_word=peek;
 
             if(string_to_upper(on_word)!="ON"){
                 cout<<"Syntax Error. Expected ON.\n";

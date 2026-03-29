@@ -29,6 +29,8 @@ struct Statement{
     StatementType type;
 
     string table_name;
+    string table_alias;
+    string join_table_alias;
     //INSERT
     vector<string>insert_values;
     //SELECT

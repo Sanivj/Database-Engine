@@ -4,10 +4,150 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
-void print_prompt(){
-    cout<<"db>";
+static vector<string>history;
+static int history_pos=-1;
+static string trim_copy(const string &s){
+    size_t start=s.find_first_not_of(" \t");
+    if(start==string::npos)return "";
+    size_t end=s.find_last_not_of(" \t");
+    return s.substr(start,end-start+1);
+}
+
+void add_to_history(const string &cmd){
+    if(cmd.empty())return;
+    if(!history.empty()&&history.back()==cmd)return;
+    history.push_back(cmd);
+    history_pos=history.size();
+}
+
+void print_prompt(bool continuation=false){
+    if(continuation)cout<<"...>";
+    else cout<<"db> ";    
+}
+
+bool read_statement(string &out){
+    out.clear();
+    string line;
+    bool first=true;
+
+    while(true){
+        print_prompt(!first);
+        if(!getline(cin,line)){
+            return false;
+        }
+
+        size_t end=line.find_last_not_of(" \t\r\n");
+        if(end!=string::npos)line=line.substr(0,end+1);
+
+        if(line.empty()){
+            if(out.empty())continue;
+            continue;
+        }
+
+        if(out.empty()){
+            out=line;
+        }else{
+            out+=" "+line;
+        }
+
+        if(!out.empty()&&out.back()==';')break;
+        if(!out.empty()&&out[0]=='.')break;
+
+        first=false;
+    }
+    return true;
+}
+
+bool handle_meta_command(const string &input,Database &db){
+    if(input==".exit"||input==".quit"){
+        cout<<"Existing MiniDB...\n";
+        exit(0);
+    }
+
+    if(input==".help"){
+        cout<<"\n";
+        cout<<"  Supported SQL commands:\n";
+        cout<<"  ─────────────────────────────────────────────────────\n";
+        cout<<"  CREATE TABLE name (col type [PRIMARY KEY], ...);\n";
+        cout<<"  DROP TABLE name;\n";
+        cout<<"  INSERT INTO name VALUES (v1, v2, ...);\n";
+        cout<<"  SELECT [DISTINCT] */cols FROM table\n";
+        cout<<"         [JOIN table2 ON t1.col = t2.col]\n";
+        cout<<"         [LEFT|RIGHT|FULL OUTER JOIN ...]\n";
+        cout<<"         [WHERE col op val [AND|OR col op val]]\n";
+        cout<<"         [GROUP BY col]\n";
+        cout<<"         [ORDER BY col [ASC|DESC]]\n";
+        cout<<"         [LIMIT n] [OFFSET n];\n";
+        cout<<"  UPDATE table SET col = val WHERE col op val;\n";
+        cout<<"  DELETE FROM table WHERE col op val;\n";
+        cout<<"  SELECT COUNT(*)|SUM(col)|AVG(col)|MIN(col)|MAX(col)\n";
+        cout<<"         FROM table [WHERE ...];\n";
+        cout<<"\n";
+        cout<<"  Meta commands:\n";
+        cout<<"  ─────────────────────────────────────────────────────\n";
+        cout<<"  .help              Show this help message\n";
+        cout<<"  .tables            List all user tables\n";
+        cout<<"  .schema <table>    Show columns of a table\n";
+        cout<<"  .exit / .quit      Exit MiniDB\n";
+        cout<<"\n";
+        return true;
+    }
+
+    if(input==".tables"){
+        Table *sys=db.get_table("sys_tables");
+        if(!sys){
+            cout<<"No tables found.\n";
+            return true;
+        }
+        auto rows=sys->get_all_rows();
+        if(rows.empty()){
+            cout<<"No users tables.\n";
+            return true;
+        }
+        cout<<"\n Tables:\n";
+        cout<<"  ──────────────────\n";
+        for(const auto &row:rows){
+            string name=row[0].as_text();
+            if(name!="sys_tables"&&name!="sys_columns"){
+                cout<<" "<<name<<"\n";
+            }
+        }
+        cout<<"\n";
+        return true;
+    }
+
+    if(input.substr(0,7)==".schema"){
+        string table_name=trim_copy(input.substr(7));
+        if(table_name.empty()){
+            cout<<"Usage: .schema <table_name>\n";
+            return true;
+        }
+        if(!db.table_exists(table_name)){
+            cout<<"Error: Table '"<<table_name<<"' does not exist.\n";
+            return true;
+        }
+        const Schema &schema=db.get_schema(table_name);
+        const auto &cols=schema.get_columns();
+        cout<<"\n  Schema for '"<<table_name<<"':\n";
+        cout<<"  ──────────────────────────────────\n";
+        for(const auto &col:cols){
+            string type=(col.type==DataType::INT)?"INT":"TEXT";
+            string pk=col.is_primary_key?" (PRIMARY KEY)":"";
+            cout<<" "<<col.name<<" "<<type<<pk<<"\n";
+        }
+        cout<<"\n";
+        return true;
+    }
+
+    if(!input.empty()&&input[0]=='.'){
+        cout<<"Unknown command: "<<input<<". Type .help for help.\n";
+        return true;
+    }
+    return false;
 }
 
 void execute_statement(const Statement &statement, Database &db){
@@ -183,19 +323,34 @@ void execute_statement(const Statement &statement, Database &db){
 
 int main(){
     Database db;
+     cout<<"\n";
+    cout<<"  ╔══════════════════════════════════╗\n";
+    cout<<"  ║         MiniDB v1.0              ║\n";
+    cout<<"  ║  Type .help for available cmds  ║\n";
+    cout<<"  ║  Type .exit to quit             ║\n";
+    cout<<"  ╚══════════════════════════════════╝\n";
+    cout<<"\n";
     string input;
     while(true){
-        print_prompt();
-        getline(cin,input);
-
-        if(input==".exit"){
-            cout<<"Exiting MiniDB...\n";
-            break;
+        if(!read_statement(input))break;
+        string trimmed=input;
+        if(!trimmed.empty()&&trimmed.back()==';'){
+            trimmed.pop_back();
         }
-        Statement statement={};
-        if(!prepare_statement(input,statement)){
-            cout<<"Unrecognized command\n";
+        
+        if(trimmed.empty())continue;
+
+        if(trimmed[0]=='.'){
+            handle_meta_command(trimmed,db);
             continue;
+        }
+
+        add_to_history(input);
+
+        Statement statement={};
+
+        if(!prepare_statement(input,statement)){
+            cout<<"Error: Unrecognized command. Type .help for help.\n";
         }
         execute_statement(statement,db);
     }
