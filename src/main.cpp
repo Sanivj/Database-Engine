@@ -73,6 +73,10 @@ void execute_statement(const Statement &statement, Database &db){
             
             if(statement.is_left_join){
                 rows=table->left_join(table2,statement.join_left_column,statement.join_right_column,schema2);
+            }else if(statement.is_right_join){
+                rows=table->right_join(table2,statement.join_left_column,statement.join_right_column,schema2);
+            }else if(statement.is_full_outer_join){
+                rows=table->full_outer_join(table2,statement.join_left_column,statement.join_right_column,schema2);
             }else{
                 rows=table->inner_join(table2,statement.join_left_column,statement.join_right_column);
             }
@@ -100,9 +104,9 @@ void execute_statement(const Statement &statement, Database &db){
             }
 
             if(statement.select_all_columns){
-                table->print_rows(rows);
+                table->print_rows(rows,statement.has_distinct);
             }else{
-                table->print_selected_columns(rows,statement.select_columns,combined_schema);
+                table->print_selected_columns(rows,statement.select_columns,combined_schema,statement.has_distinct);
             }
             return;
         }
@@ -143,9 +147,9 @@ void execute_statement(const Statement &statement, Database &db){
         }
 
         if(statement.select_all_columns){
-            table->print_rows(rows);
+            table->print_rows(rows,statement.has_distinct);
         }else{
-            table->print_selected_columns(rows,statement.select_columns,schema);
+            table->print_selected_columns(rows,statement.select_columns,schema,statement.has_distinct);
         }
     }
 

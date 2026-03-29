@@ -169,10 +169,16 @@ bool prepare_statement(const string &input,Statement &statement){
         statement.aggregate_column="";
         statement.has_group_by=false;
         statement.group_by_column="";
+        statement.has_distinct=false;
 
         string rest;
         getline(ss,rest);
         rest=trim_copy(rest);
+
+        if(string_to_upper(rest).substr(0,8)=="DISTINCT"){
+            statement.has_distinct=true;
+            rest=trim_copy(rest.substr(8));
+        }
 
         size_t from_pos=string_to_upper(rest).find("FROM");
         if(from_pos==string::npos){
@@ -248,11 +254,21 @@ bool prepare_statement(const string &input,Statement &statement){
         size_t end_pos=string_to_upper(after_from).length();
         size_t join_pos=string_to_upper(after_from).find("JOIN");
         size_t left_join_pos=string_to_upper(after_from).find("LEFT JOIN");
+        size_t right_join_pos=string_to_upper(after_from).find("RIGHT JOIN");
+        size_t full_outer_join_pos=string_to_upper(after_from).find("FULL OUTER JOIN");
 
         bool found_left_join=false;
-        if(left_join_pos!=string::npos){
+        bool found_right_join=false;
+        bool found_full_outer_join=false;
+        if(full_outer_join_pos!=string::npos){
+            found_full_outer_join=true;
+            join_pos=full_outer_join_pos;
+        }else if(left_join_pos!=string::npos){
             found_left_join=true;
             join_pos=left_join_pos;
+        }else if(right_join_pos!=string::npos){
+            found_right_join=true;
+            join_pos=right_join_pos;
         }
 
         if(join_pos!=string::npos)end_pos=min(end_pos,join_pos);
@@ -270,6 +286,8 @@ bool prepare_statement(const string &input,Statement &statement){
         if(join_pos!=string::npos){
             statement.has_join=true;
             statement.is_left_join=found_left_join;
+            statement.is_right_join=found_right_join;
+            statement.is_full_outer_join=found_full_outer_join;
             
             string join_part=trim_copy(after_from.substr(actual_join_pos+4));
 

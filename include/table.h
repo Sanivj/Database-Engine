@@ -22,13 +22,15 @@ class Table{
         void update_where(const string &target_column,const string &new_value,const string &where_column,const string &where_operator,const string &where_value);
         vector<vector<Value>>get_all_rows();
         vector<vector<Value>>filter_rows(const Statement &statement);
-        void print_rows(const vector<vector<Value>>&rows)const;
-        void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema)const;
+        void print_rows(const vector<vector<Value>>&rows,bool distinct=false)const;
+        void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct=false)const;
         void sort_rows(vector<vector<Value>>&rows,const string &order_by_column,bool descending)const;
         void aggregate(const vector<vector<Value>>&rows,const Statement &statement);
         void group_by_aggregate(const vector<vector<Value>> &rows,const Statement &statement);
         vector<vector<Value>>inner_join(Table *other,const string &col1,const string &col2);
         vector<vector<Value>>left_join(Table *other,const string &col1,const string &col2,const Schema &other_schema);
+        vector<vector<Value>>right_join(Table *other,const string &col1,const string &col2,const Schema &other_schema);
+        vector<vector<Value>>full_outer_join(Table *other,const string &col1,const string &col2,const Schema &other_schema);
         vector<vector<Value>>filter_joined_rows(const vector<vector<Value>>&rows,const Schema &combined_schema,const Statement &statement);
         void sort_joined_rows(vector<vector<Value>>&rows,const Schema &combined_schema,const string &order_by_column,bool descending)const;
     private:

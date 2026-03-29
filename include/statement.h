@@ -34,6 +34,7 @@ struct Statement{
     //SELECT
     vector<string>select_columns;
     bool select_all_columns=false;
+    bool has_distinct=false;
     bool has_where_clause=false;
     string where_column;
     string where_operator;
@@ -67,6 +68,8 @@ struct Statement{
     //JOINS
     bool has_join=false;
     bool is_left_join=false;
+    bool is_right_join=false;
+    bool is_full_outer_join=false;
     string join_table;
     string join_left_column;
     string join_right_column;
