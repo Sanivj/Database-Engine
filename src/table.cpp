@@ -37,6 +37,7 @@ Table::Table(const string &filename,const Schema &schema):pager(filename),schema
 uint32_t Table::compute_row_size() const{
     uint32_t size=0;
     for(const auto& col: schema.get_columns()){
+        size+=1;
         if(col.type==DataType::INT)size+=sizeof(int);
         else if(col.type==DataType::TEXT)size+=FIXED_TEXT_SIZE;
     }
@@ -47,6 +48,10 @@ void Table::serialize_row(const vector<Value> &values,void *destination) const{
     char *ptr=(char*)destination;
 
     for(size_t i=0;i<values.size();i++){
+        char null_flag=values[i].is_null()?1:0;
+        memcpy(ptr,&null_flag,1);
+        ptr+=1;
+
         if(schema.get_columns()[i].type==DataType::INT){
             int v=values[i].as_int();
             memcpy(ptr,&v,sizeof(int));
@@ -65,16 +70,22 @@ void Table::deserialize_row(void *source,vector<Value> &values) const{
     char *ptr=(char*)source;
 
     for(const auto &col:schema.get_columns()){
+        char null_flag=0;
+        memcpy(&null_flag,ptr,1);
+        ptr+=1;
+
         if(col.type==DataType::INT){
             int v;
             memcpy(&v,ptr,sizeof(int));
-            values.push_back(Value::from_int(v));
             ptr+=sizeof(int);
+            if(null_flag)values.push_back(Value::make_null());
+            else values.push_back(Value::from_int(v));
         }else{
             char buffer[FIXED_TEXT_SIZE+1]={};
             memcpy(buffer,ptr,FIXED_TEXT_SIZE);
-            values.push_back(Value::from_text(buffer));
             ptr+=FIXED_TEXT_SIZE;
+            if(null_flag)values.push_back(Value::make_null());
+            else values.push_back(Value::from_text(buffer));
         }
     }
 }
@@ -695,7 +706,9 @@ void Table::print_rows(const vector<vector<Value>>&rows,bool distinct)const{
         }
         cout<<"(";
         for(size_t j=0;j<values.size();j++){
-            if(values[j].get_type()==DataType::INT){
+            if(values[j].is_null()){
+                cout<<"NULL";
+            }else if(values[j].get_type()==DataType::INT){
                 cout<<values[j].as_int();
             }else{
                 cout<<values[j].as_text();
@@ -742,7 +755,9 @@ void Table::print_rows_with_schema(const vector<vector<Value>>&rows,const Schema
         }
         cout<<"(";
         for(size_t j=0;j<values.size();j++){
-            if(values[j].get_type()==DataType::INT)
+            if(values[j].is_null()){
+                cout<<"NULL";
+            }else if(values[j].get_type()==DataType::INT)
                 cout<<values[j].as_int();
             else
                 cout<<values[j].as_text();
@@ -813,7 +828,9 @@ void Table::print_selected_columns(const vector<vector<Value>>&rows,const vector
         cout<<"(";
         for(size_t j=0;j<column_indexes.size();j++){
             int idx=column_indexes[j];
-            if(values[idx].get_type()==DataType::INT){
+            if(values[idx].is_null()){
+                cout<<"NULL";
+            }else if(values[idx].get_type()==DataType::INT){
                 cout<<values[idx].as_int();
             }else{
                 cout<<values[idx].as_text();
@@ -1045,12 +1062,8 @@ vector<vector<Value>>Table::left_join(Table *other,const string &col1,const stri
     }
 
     vector<Value>null_rows;
-    for(const auto &col:cols2){
-        if(col.type==DataType::INT){
-            null_rows.push_back(Value::from_int(0));
-        }else{
-            null_rows.push_back(Value::from_text("NULL"));
-        }
+    for(size_t i=0;i<cols2.size();i++){
+        null_rows.push_back(Value::make_null());
     }
 
     vector<vector<Value>>rows1=get_all_rows();
@@ -1111,12 +1124,8 @@ vector<vector<Value>>Table::right_join(Table *other,const string &col1,const str
     }
 
     vector<Value>null_row;
-    for(const auto &col:cols1){
-        if(col.type==DataType::INT){
-            null_row.push_back(Value::from_int(0));
-        }else{
-            null_row.push_back(Value::from_text("NULL"));
-        }
+    for(size_t i=0;i<cols1.size();i++){
+        null_row.push_back(Value::make_null());
     }
 
     vector<vector<Value>>rows1=get_all_rows();
@@ -1176,21 +1185,14 @@ vector<vector<Value>>Table::full_outer_join(Table *other,const string &col1,cons
     }
 
     vector<Value>null_left;
-    for(const auto &col:cols1){
-        if(col.type==DataType::INT){
-            null_left.push_back(Value::from_int(0));
-        }else{
-            null_left.push_back(Value::from_text("NULL"));
-        }
+    
+    for(size_t i=0;i<cols1.size();i++){
+        null_left.push_back(Value::make_null());
     }
 
     vector<Value>null_right;
-    for(const auto &col:cols2){
-        if(col.type==DataType::INT){
-            null_right.push_back(Value::from_int(0));
-        }else{
-            null_right.push_back(Value::from_text("NULL"));
-        }
+    for(size_t i=0;i<cols2.size();i++){
+        null_right.push_back(Value::make_null());
     }
 
     vector<vector<Value>>rows1=get_all_rows();

@@ -33,7 +33,9 @@ void execute_statement(const Statement &statement, Database &db){
         }
         vector<Value> values;
         for(size_t i=0;i<schema.get_columns().size();i++){
-            if(schema.get_columns()[i].type==DataType::INT){
+            if(statement.insert_values[i]=="__NULL__"){
+                values.push_back(Value::make_null());
+            }else if(schema.get_columns()[i].type==DataType::INT){
                 values.push_back(Value::from_int(stoi(statement.insert_values[i])));
             }else{
                 values.push_back(Value::from_text(statement.insert_values[i]));

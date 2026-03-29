@@ -147,6 +147,9 @@ bool prepare_statement(const string &input,Statement &statement){
             if(!value.empty()&&value.back()=='\''){
                 value.pop_back();
             }
+            string upper_val=value;
+            transform(upper_val.begin(),upper_val.end(),upper_val.begin(),::toupper);
+            if(upper_val=="NULL")value="__NULL__";
             statement.insert_values.push_back(value);
         }
         statement.type=StatementType::INSERT;
