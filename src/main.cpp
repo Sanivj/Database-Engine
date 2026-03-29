@@ -143,6 +143,11 @@ bool handle_meta_command(const string &input,Database &db){
         return true;
     }
 
+    if(input==".indexes"){
+        db.list_indexes();
+        return true;
+    }
+
     if(!input.empty()&&input[0]=='.'){
         cout<<"Unknown command: "<<input<<". Type .help for help.\n";
         return true;
@@ -314,6 +319,14 @@ void execute_statement(const Statement &statement, Database &db){
         Table *table=db.get_table(statement.table_name);
 
         table->update_where(statement.update_column,statement.update_value,statement.where_column,statement.where_operator,statement.where_value);
+    }
+
+    else if(statement.type==StatementType::CREATE_INDEX){
+        db.create_index(statement.index_name,statement.table_name,statement.index_column);
+    }
+
+    else if(statement.type==StatementType::DROP_INDEX){
+        db.drop_index(statement.index_name);
     }
 
     else{

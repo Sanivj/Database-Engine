@@ -147,3 +147,86 @@ void Database::load_catalog(){
         tables[table_name]=make_unique<Table>(filename,schema);
     }
 }
+
+bool Database::create_index(const string &index_name,const string &table_name,const string &column_name){
+    if(!table_exists(table_name)){
+        cout<<"Error: Table '"<<table_name<<"' does not exist.\n";
+        return false;
+    }
+    if(index_exists(index_name)){
+        cout<<"Error: Index '"<<index_name<<"' already exists.\n";
+        return false;
+    }
+
+    const Schema &schema=get_schema(table_name);
+    const auto &cols=schema.get_columns();
+    int col_index=-1;
+    for(size_t i=0;i<cols.size();i++){
+        if(cols[i].name==column_name){
+            col_index=i;
+            break;
+        }
+    }
+    if(col_index==-1){
+        cout<<"Error: Column '"<<column_name<<"' does not exists.\n";
+        return false;
+    }
+
+    HashIndex idx(table_name,column_name);
+    Table *table=get_table(table_name);
+    auto rows=table->get_all_rows();
+
+    for(uint32_t i=0;i<rows.size();i++){
+        const Value &val=rows[i][col_index];
+        string key;
+        if(val.is_null())key="__NULL__";
+        else if(val.get_type()==DataType::INT)key=to_string(val.as_int());
+        else key=val.as_text();
+        idx.insert(key,i);
+    }
+
+    indexes[index_name]=idx;
+    string map_key=table_name+":"+column_name;
+    column_index_map[map_key]=index_name;
+
+    cout<<"Index '"<<index_name<<"' created on "<<table_name<<"("<<column_name<<").\n";
+    return true;
+}
+
+void Database::drop_index(const string &index_name){
+    if(!index_exists(index_name)){
+        cout<<"Error Index '"<<index_name<<"' does not exists.\n";
+        return;
+    }
+    const HashIndex &idx=indexes[index_name];
+    string map_key=idx.get_table_name()+":"+idx.get_column_name();
+    column_index_map.erase(map_key);
+    indexes.erase(index_name);
+    cout<<"Index '"<<index_name<<"' dropped.\n";
+}
+
+bool Database::index_exists(const string &index_name)const{
+    return indexes.find(index_name)!=indexes.end();
+}
+
+HashIndex *Database::get_index_for_column(const string &table_name,const string &column_name){
+    string map_key=table_name+":"+column_name;
+    auto it=column_index_map.find(map_key);
+    if(it==column_index_map.end())return nullptr;
+    auto idx_it=indexes.find(it->second);
+    if(idx_it==indexes.end())return nullptr;
+    return &idx_it->second;
+}
+
+void Database::list_indexes()const{
+    if(indexes.empty()){
+        cout<<" No indexes.\n";
+        return;
+    }
+    cout<<"\n Indexes:\n";
+    cout<<"  ─────────────────────────────────────\n";
+    for(const auto &p:indexes){
+        cout<<" "<<p.first<<" ON "<<p.second.get_table_name()<<"("<<p.second.get_column_name()<<")\n";
+    }
+    cout<<"\n";
+}

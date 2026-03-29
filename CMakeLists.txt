@@ -14,4 +14,6 @@ add_executable(miniDB
     src/schema.cpp
     src/database.cpp
     src/value.cpp
+    src/btree.cpp
+    src/index.cpp
 )

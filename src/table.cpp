@@ -1326,3 +1326,15 @@ void Table::sort_joined_rows(vector<vector<Value>>&rows,const Schema &combined_s
         return descending?!res:res;
     });
 }
+
+vector<Value>Table::get_row(uint32_t row_num){
+    if(row_num>=num_rows)return {};
+    uint32_t row_size=compute_row_size();
+    uint32_t page_num,page_offset;
+    row_slot(row_num,row_size,page_num,page_offset);
+    void *page=pager.get_page(page_num);
+    void *source=(char*)page+page_offset;
+    vector<Value>values;
+    deserialize_row(source,values);
+    return values;
+}

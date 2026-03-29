@@ -32,6 +32,39 @@ bool prepare_statement(const string &input,Statement &statement){
     if(upper_first=="CREATE"){
         string second_word;
         ss>>second_word;
+
+        if(string_to_upper(second_word)=="INDEX"){
+            string index_name;
+            ss>>index_name;
+            string on_word;
+            ss>>on_word;
+
+            if(string_to_upper(on_word)!="ON"){
+                cout<<"Syntax error.Expected ON.\n";
+                return false;
+            }
+            string rest;
+            getline(ss,rest);
+            rest=trim_copy(rest);
+            if(!rest.empty()&&rest.back()==';')rest.pop_back();
+            rest=trim_copy(rest);
+
+            size_t open=rest.find('(');
+            size_t close=rest.find(')');
+            if(open==string::npos||close==string::npos){
+                cout<<"Syntax error. Expected table (column).\n";
+                return false;
+            }
+            string table_name=trim_copy(rest.substr(0,open));
+            string column_name=trim_copy(rest.substr(open+1,close-open-1));
+
+            statement.type=StatementType::CREATE_INDEX;
+            statement.index_name=index_name;
+            statement.table_name=table_name;
+            statement.index_column=column_name;
+            return true;
+        }
+
         if(string_to_upper(second_word)!="TABLE"){
             cout<<"Syntax Error. Expected TABLE.\n";
             return false;
@@ -522,6 +555,13 @@ bool prepare_statement(const string &input,Statement &statement){
     if(upper_first=="DROP"){
         string second_word;
         ss>>second_word;
+
+        if(string_to_upper(second_word)=="INDEX"){
+            ss>>statement.index_name;
+            if(!statement.index_name.empty()&&statement.index_name.back()==';')statement.index_name.pop_back();
+            statement.type=StatementType::DROP_INDEX;
+            return true;
+        }
 
         if(string_to_upper(second_word)!="TABLE"){
             cout<<"Syntax error. Expected TABLE.\n";

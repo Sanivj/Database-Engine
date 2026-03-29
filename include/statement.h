@@ -13,7 +13,9 @@ enum class StatementType{
     CREATE_TABLE,
     DROP_TABLE,
     DELETE_ROWS,
-    UPDATE_ROWS
+    UPDATE_ROWS,
+    CREATE_INDEX,
+    DROP_INDEX
 };
 
 enum class AggregateType{
@@ -31,6 +33,9 @@ struct Statement{
     string table_name;
     string table_alias;
     string join_table_alias;
+    //INDEX
+    string index_name;
+    string index_column;
     //INSERT
     vector<string>insert_values;
     //SELECT
