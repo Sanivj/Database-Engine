@@ -709,7 +709,51 @@ void Table::print_rows(const vector<vector<Value>>&rows,bool distinct)const{
     }
 }
 
-void Table::print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct)const{
+void Table::print_rows_with_schema(const vector<vector<Value>>&rows,const Schema &schema,bool distinct)const{
+    const auto &cols=schema.get_columns();
+
+    cout<<"(";
+    for(size_t i=0;i<cols.size();i++){
+        cout<<cols[i].name;
+        if(i!=cols.size()-1)cout<<", ";
+    }
+    cout<<")\n";
+    cout<<string(40,'-')<<"\n";
+    vector<string>seen;
+    for(const auto &values:rows){
+        string key;
+        for(const auto &val:values){
+            if(val.get_type()==DataType::INT){
+                key+=to_string(val.as_int())+"|";
+            }else{
+                key+=val.as_text()+"|";
+            }
+        }
+        if(distinct){
+            bool found=false;
+            for(const auto &s:seen){
+                if(s==key){
+                    found=true;
+                    break;
+                }
+            }
+            if(found)continue;
+            seen.push_back(key);
+        }
+        cout<<"(";
+        for(size_t j=0;j<values.size();j++){
+            if(values[j].get_type()==DataType::INT)
+                cout<<values[j].as_int();
+            else
+                cout<<values[j].as_text();
+            if(j!=values.size()-1) cout<<", ";
+        }
+        cout<<")\n";
+    }
+}
+
+
+void Table::print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct,const vector<string>&aliases)const{
     vector<int>column_indexes;
     const auto &schema_cols=schema.get_columns();
 
@@ -732,6 +776,19 @@ void Table::print_selected_columns(const vector<vector<Value>>&rows,const vector
             return;
         }
     }
+
+    cout<<"(";
+    for(size_t i=0;i<columns.size();i++){
+        if(!aliases.empty()&&i<aliases.size()){
+            cout<<aliases[i];
+        }else{
+            cout<<columns[i];
+        }
+        if(i!=columns.size()-1)cout<<", ";
+    }
+    cout<<")\n";
+    cout<<string(40,'-')<<"\n";
+
     vector<string>seen;
     for(const auto &values:rows){
         string key;

@@ -23,7 +23,8 @@ class Table{
         vector<vector<Value>>get_all_rows();
         vector<vector<Value>>filter_rows(const Statement &statement);
         void print_rows(const vector<vector<Value>>&rows,bool distinct=false)const;
-        void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct=false)const;
+        void print_rows_with_schema(const vector<vector<Value>>&rows,const Schema &schema,bool distinct=false)const;
+        void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct=false,const vector<string>&aliases={})const;
         void sort_rows(vector<vector<Value>>&rows,const string &order_by_column,bool descending)const;
         void aggregate(const vector<vector<Value>>&rows,const Statement &statement);
         void group_by_aggregate(const vector<vector<Value>> &rows,const Statement &statement);

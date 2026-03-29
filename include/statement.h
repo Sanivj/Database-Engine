@@ -33,6 +33,7 @@ struct Statement{
     vector<string>insert_values;
     //SELECT
     vector<string>select_columns;
+    vector<string>select_aliases;
     bool select_all_columns=false;
     bool has_distinct=false;
     bool has_where_clause=false;

@@ -104,9 +104,9 @@ void execute_statement(const Statement &statement, Database &db){
             }
 
             if(statement.select_all_columns){
-                table->print_rows(rows,statement.has_distinct);
+                table->print_rows_with_schema(rows,combined_schema,statement.has_distinct);
             }else{
-                table->print_selected_columns(rows,statement.select_columns,combined_schema,statement.has_distinct);
+                table->print_selected_columns(rows,statement.select_columns,combined_schema,statement.has_distinct,statement.select_aliases);
             }
             return;
         }
@@ -147,9 +147,9 @@ void execute_statement(const Statement &statement, Database &db){
         }
 
         if(statement.select_all_columns){
-            table->print_rows(rows,statement.has_distinct);
+            table->print_rows_with_schema(rows,schema,statement.has_distinct);
         }else{
-            table->print_selected_columns(rows,statement.select_columns,schema,statement.has_distinct);
+            table->print_selected_columns(rows,statement.select_columns,schema,statement.has_distinct,statement.select_aliases);
         }
     }
 

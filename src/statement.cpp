@@ -156,6 +156,7 @@ bool prepare_statement(const string &input,Statement &statement){
     if(upper_first=="SELECT"){
         statement.type=StatementType::SELECT_ALL;
         statement.select_columns.clear();
+        statement.select_aliases.clear();
         statement.has_where_clause=false;
         statement.has_order_by=false;
         statement.order_desc=false;
@@ -242,7 +243,18 @@ bool prepare_statement(const string &input,Statement &statement){
                 }else{
                     size_t dot=col.find('.');
                     if(dot!=string::npos)col=col.substr(dot+1);
-                    statement.select_columns.push_back(col);
+
+                    string upper_col=string_to_upper(col);
+                    size_t as_pos=upper_col.find(" AS ");
+                    if(as_pos!=string::npos){
+                        string alias=trim_copy(col.substr(as_pos+4));
+                        col=trim_copy(col.substr(0,as_pos));
+                        statement.select_columns.push_back(col);
+                        statement.select_aliases.push_back(alias);
+                    }else{
+                        statement.select_columns.push_back(col);
+                        statement.select_aliases.push_back(col);
+                    }
                 }
             }
         }
