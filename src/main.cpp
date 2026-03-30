@@ -264,33 +264,30 @@ void execute_statement(const Statement &statement, Database &db){
             return;
         }
 
-        if(statement.has_where_clause){
-            HashIndex *idx=db.get_index_for_column(statement.table_name,statement.where_column);
-            rows=table->filter_rows(
-                statement,idx
-            );
-        }else{
-            rows=table->get_all_rows();
-        }
-
-        if(statement.has_order_by){
-            table->sort_rows(rows,statement.order_by_column,statement.order_desc);
-        }
-
-        if(statement.has_offset){
-            if(statement.offset_count<rows.size()){
-                rows.erase(rows.begin(),rows.begin()+statement.offset_count);
-            }else{
-                rows.clear();
+        
+            HashIndex *idx=nullptr;
+            if(statement.has_where_clause){
+                idx=db.get_index_for_column(statement.table_name,statement.where_column);
             }
-        }
+            rows=table->scan_rows(statement,idx);
 
-        if(statement.has_limit){
-            if(statement.limit_count<rows.size()){
-                rows.resize(statement.limit_count);
+            if(statement.has_order_by){
+                table->sort_rows(rows,statement.order_by_column,statement.order_desc);
+                if(statement.has_offset){
+                    if(statement.offset_count<(int)rows.size()){
+                        rows.erase(rows.begin(),rows.begin()+statement.offset_count);
+                    }else{
+                        rows.clear();
+                    }
+                }
+                if(statement.has_limit){
+                    if(statement.limit_count<(int)rows.size()){
+                        rows.resize(statement.limit_count);
+                    }
+                }
             }
-        }
-
+        
+        
         if(statement.aggregate_type!=AggregateType::NONE){
             if(statement.has_group_by){
                 table->group_by_aggregate(rows,statement);
@@ -369,6 +366,7 @@ int main(){
         if(!trimmed.empty()&&trimmed.back()==';'){
             trimmed.pop_back();
         }
+        trimmed=trim_copy(trimmed);
         
         if(trimmed.empty())continue;
 

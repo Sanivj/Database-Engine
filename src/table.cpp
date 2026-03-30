@@ -262,6 +262,131 @@ vector<vector<Value>>Table::get_all_rows(){
     return rows;
 }
 
+
+vector<vector<Value>>Table::scan_rows(const Statement &statement,HashIndex *index){
+    vector<vector<Value>>result;
+    const auto &cols=schema.get_columns();
+
+    if(index!=nullptr&&statement.has_where_clause&&statement.where_operator=="="&&!statement.has_second_condition&&!statement.has_order_by){
+        string lookup_key=trim_copy(statement.where_value);
+        vector<uint32_t>row_nums=index->lookup(lookup_key);
+
+        int count=0;
+        int skip=statement.has_offset?statement.offset_count:0;
+
+        for(uint32_t rn:row_nums){
+            if(skip>0){
+                skip--;
+                continue;
+            }
+            vector<Value>row=get_row(rn);
+            if(!row.empty()){
+                result.push_back(row);
+                count++;
+                if(statement.has_limit&&count>=statement.limit_count)break;
+            }
+        }
+        return result;
+    }
+    uint32_t row_size=compute_row_size();
+    int count=0;
+    int skip=statement.has_offset?statement.offset_count:0;
+
+    bool need_all=(statement.has_order_by||statement.has_group_by);
+
+    for(uint32_t i=0;i<num_rows;i++){
+        uint32_t page_num,page_offset;
+        row_slot(i,row_size,page_num,page_offset);
+
+        void *page=pager.get_page(page_num);
+        void *source=(char*)page+page_offset;
+
+        vector<Value>values;
+        deserialize_row(source,values);
+
+        if(statement.has_where_clause){
+            bool match=false;
+            int idx1=-1;
+            for(size_t c=0;c<cols.size();c++){
+                if(cols[c].name==statement.where_column){
+                    idx1=c;
+                    break;
+                }
+            }
+            if(idx1==-1)continue;
+
+            const Value &cell=values[idx1];
+            if(cell.is_null()){
+                match=false;
+            }else if(cell.get_type()==DataType::INT){
+                int left=cell.as_int();
+                int right;
+                try{
+                    right=stoi(trim_copy(statement.where_value));
+                }catch(...){
+                    continue;
+                }
+                if(statement.where_operator=="=")match=(left==right);
+                else if(statement.where_operator==">")match=(left>right);
+                else if(statement.where_operator==">=")match=(left>=right);
+                else if(statement.where_operator=="<")match=(left<right);
+                else if(statement.where_operator=="<=")match=(left<=right);
+                else if(statement.where_operator=="!=")match=(left!=right);
+            }else{
+                string left=cell.as_text();
+                string right=trim_copy(statement.where_value);
+                if(statement.where_operator=="=")match=(left==right);
+                else if(statement.where_operator=="!=")match=(left!=right);
+            }
+            
+            if(statement.has_second_condition){
+                int idx2=-1;
+                for(size_t c=0;c<cols.size();c++){
+                    if(cols[c].name==statement.where_column2){idx2=c;break;}
+                }
+                bool match2=false;
+                if(idx2!=-1){
+                    const Value &cell2=values[idx2];
+                    if(!cell2.is_null()){
+                        if(cell2.get_type()==DataType::INT){
+                            int left=cell2.as_int();
+                            int right;
+                            try
+                            {
+                                right=stoi(trim_copy(statement.where_value2));
+                            }catch(...)
+                            {
+                                right=0;
+                            }
+                            if(statement.where_operator2=="=") match2=(left==right);
+                            else if(statement.where_operator2==">") match2=(left>right);
+                            else if(statement.where_operator2=="<") match2=(left<right);
+                            else if(statement.where_operator2==">=")match2=(left>=right);
+                            else if(statement.where_operator2=="<=")match2=(left<=right);
+                            else if(statement.where_operator2=="!=")match2=(left!=right);
+                        }else{
+                            string left=cell2.as_text();
+                            string right=trim_copy(statement.where_value2);
+                            if(statement.where_operator2=="=") match2=(left==right);
+                            else if(statement.where_operator2=="!=")match2=(left!=right);
+                        }
+                    }
+                }
+                if(statement.logical_operator=="AND") match=match&&match2;
+                else                                  match=match||match2;
+            }
+            if(!match) continue;
+        }
+        if(skip>0){skip--;continue;}
+
+        result.push_back(values);
+        count++;
+
+        if(!need_all&&statement.has_limit&&count>=statement.limit_count) break;
+    }
+    return result;
+}
+
 void Table::select_columns(const vector<string>&columns,const Schema &schema){
     vector<int>column_indexes;
 

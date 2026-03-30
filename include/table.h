@@ -24,6 +24,7 @@ class Table{
         vector<vector<Value>>get_all_rows();
         vector<Value>get_row(uint32_t row_num);
         void restore_rows(const vector<vector<Value>>&rows);
+        vector<vector<Value>>scan_rows(const Statement &statement,HashIndex *index=nullptr);
         vector<vector<Value>>filter_rows(const Statement &statement,HashIndex *index=nullptr);
         void print_rows(const vector<vector<Value>>&rows,bool distinct=false)const;
         void print_rows_with_schema(const vector<vector<Value>>&rows,const Schema &schema,bool distinct=false)const;
