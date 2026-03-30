@@ -6,6 +6,7 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include "index.h"
 using namespace std;
 
 static vector<string>history;
@@ -24,18 +25,23 @@ void add_to_history(const string &cmd){
     history_pos=history.size();
 }
 
-void print_prompt(bool continuation=false){
-    if(continuation)cout<<"...>";
-    else cout<<"db> ";    
+void print_prompt(bool continuation=false,bool in_txn=false){
+    if(continuation){
+        if(in_txn)cout<<"txn...> ";
+        else cout<<"...> "; 
+    }else{
+        if(in_txn)cout<<"txn> ";
+        else cout<<"db> ";
+    }     
 }
 
-bool read_statement(string &out){
+bool read_statement(string &out,bool in_txn=false){
     out.clear();
     string line;
     bool first=true;
 
     while(true){
-        print_prompt(!first);
+        print_prompt(!first,in_txn);
         if(!getline(cin,line)){
             return false;
         }
@@ -65,7 +71,7 @@ bool read_statement(string &out){
 bool handle_meta_command(const string &input,Database &db){
     if(input==".exit"||input==".quit"){
         cout<<"Existing MiniDB...\n";
-        exit(0);
+        return false;
     }
 
     if(input==".help"){
@@ -259,8 +265,9 @@ void execute_statement(const Statement &statement, Database &db){
         }
 
         if(statement.has_where_clause){
+            HashIndex *idx=db.get_index_for_column(statement.table_name,statement.where_column);
             rows=table->filter_rows(
-                statement
+                statement,idx
             );
         }else{
             rows=table->get_all_rows();
@@ -329,6 +336,18 @@ void execute_statement(const Statement &statement, Database &db){
         db.drop_index(statement.index_name);
     }
 
+    else if(statement.type==StatementType::BEGIN_TXN){
+        db.begin_transaction();
+    }
+
+    else if(statement.type==StatementType::COMMIT_TXN){
+        db.commit_transaction();
+    }
+
+    else if(statement.type==StatementType::ROLLBACK_TXN){
+        db.rollback_transaction();
+    }
+
     else{
         cout<<"Unsupported Statement.\n";
     }
@@ -345,7 +364,7 @@ int main(){
     cout<<"\n";
     string input;
     while(true){
-        if(!read_statement(input))break;
+        if(!read_statement(input,db.in_transaction()))break;
         string trimmed=input;
         if(!trimmed.empty()&&trimmed.back()==';'){
             trimmed.pop_back();
@@ -354,7 +373,7 @@ int main(){
         if(trimmed.empty())continue;
 
         if(trimmed[0]=='.'){
-            handle_meta_command(trimmed,db);
+            if(!handle_meta_command(trimmed,db))break;
             continue;
         }
 

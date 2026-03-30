@@ -572,10 +572,9 @@ void Table::update_where(const string &target_column,const string &new_value,con
     cout<<"Updated "<<updated_count<<" row(s).\n";
 }
 
-vector<vector<Value>>Table::filter_rows(const Statement &statement){
+vector<vector<Value>>Table::filter_rows(const Statement &statement,HashIndex * index){
     vector<vector<Value>>result;
     string logical_op=trim_copy(statement.logical_operator);
-    vector<vector<Value>>all_rows=get_all_rows();
     const auto &cols=schema.get_columns();
 
     int idx1=-1;
@@ -590,6 +589,19 @@ vector<vector<Value>>Table::filter_rows(const Statement &statement){
         cout<<"Error: Column does not exist.\n";
         return result;
     }
+
+    if(index!=nullptr&&statement.where_operator=="="&&!statement.has_second_condition){
+        string lookup_key=trim_copy(statement.where_value);
+        vector<uint32_t>row_nums=index->lookup(lookup_key);
+
+        for(uint32_t rn:row_nums){
+            vector<Value>row=get_row(rn);
+            if(!row.empty())result.push_back(row);
+        }
+        return result;
+    }
+
+    vector<vector<Value>>all_rows=get_all_rows();
 
     int idx2=-1;
     if(statement.has_second_condition){
@@ -1337,4 +1349,27 @@ vector<Value>Table::get_row(uint32_t row_num){
     vector<Value>values;
     deserialize_row(source,values);
     return values;
+}
+
+void Table::restore_rows(const vector<vector<Value>>&rows){
+    num_rows=0;
+    void *first_page=pager.get_page(0);
+    memset(first_page,0,PAGE_SIZE);
+    memcpy(first_page,&num_rows,HEADER_SIZE);
+
+    uint32_t row_size=compute_row_size();
+
+    for(const auto &row:rows){
+        uint32_t page_num,page_offset;
+        row_slot(num_rows,row_size,page_num,page_offset);
+
+        void *page=pager.get_page(page_num);
+        void *dest=(char*)page+page_offset;
+
+        serialize_row(row,dest);
+        num_rows++;
+    }
+
+    first_page=pager.get_page(0);
+    memcpy(first_page,&num_rows,HEADER_SIZE);
 }

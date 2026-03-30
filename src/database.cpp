@@ -230,3 +230,54 @@ void Database::list_indexes()const{
     }
     cout<<"\n";
 }
+
+void Database::begin_transaction(){
+    if(txn_active){
+        cout<<"Error: Transaction already active. COMMIT or ROLLBACK first.\n";
+        return;
+    }
+
+    txn_snapshot.clear();
+    for(auto &p:tables){
+        const string &name=p.first;
+        if(name=="sys_tables"||name=="sys_columns")continue;
+        txn_snapshot[name]=p.second->get_all_rows();
+    }
+    txn_active=true;
+    cout<<"Transaction started.\n";
+}
+
+void Database::commit_transaction(){
+    if(!txn_active){
+        cout<<"Error: No active transaction.\n";
+        return;
+    }
+
+    txn_snapshot.clear();
+    txn_active=false;
+    cout<<"Transaction committed.\n";
+}
+
+void Database::rollback_transaction(){
+    if(!txn_active){
+        cout<<"Error: No active transaction.\n";
+        return;
+    }
+
+    for(auto &p:txn_snapshot){
+        const string &name=p.first;
+        const vector<vector<Value>>&snapshot_rows=p.second;
+
+        Table *table=get_table(name);
+        if(!table)continue;
+
+        table->restore_rows(snapshot_rows);
+    }
+    txn_snapshot.clear();
+    txn_active=false;
+    cout<<"Transaction rolled back.\n";
+}
+
+bool Database::in_transaction()const{
+    return txn_active;
+}

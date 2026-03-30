@@ -25,6 +25,12 @@ class Database{
         bool index_exists(const string &index_name)const;
         HashIndex *get_index_for_column(const string &table_name,const string &column_name);
         void list_indexes()const;
+
+        //TRANSACTION MANAGEMENT
+        void begin_transaction();
+        void commit_transaction();
+        void rollback_transaction();
+        bool in_transaction()const;
     private:
         unordered_map<string,Schema>schemas;
         unordered_map<string,unique_ptr<Table>>tables;
@@ -32,6 +38,11 @@ class Database{
         unordered_map<string,HashIndex>indexes;
         //table:column->index_name for last lookup
         unordered_map<string,string>column_index_map;
+
+        //Transaction state
+        bool txn_active=false;
+        //table_name->snapshot of all rows before transaction begins
+        unordered_map<string,vector<vector<Value>>>txn_snapshot;
 };
 
 #endif

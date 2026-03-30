@@ -15,7 +15,10 @@ enum class StatementType{
     DELETE_ROWS,
     UPDATE_ROWS,
     CREATE_INDEX,
-    DROP_INDEX
+    DROP_INDEX,
+    BEGIN_TXN,
+    COMMIT_TXN,
+    ROLLBACK_TXN
 };
 
 enum class AggregateType{

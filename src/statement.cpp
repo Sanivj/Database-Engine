@@ -663,5 +663,21 @@ bool prepare_statement(const string &input,Statement &statement){
         }
         return true;
     }
+
+    if(upper_first=="BEGIN"){
+        statement.type=StatementType::BEGIN_TXN;
+        return true;
+    }
+
+    if(upper_first=="COMMIT"){
+        statement.type=StatementType::COMMIT_TXN;
+        return true;
+    }
+
+    if(upper_first=="ROLLBACK"){
+        statement.type==StatementType::ROLLBACK_TXN;
+        return true;
+    }
+
     return false;
 }

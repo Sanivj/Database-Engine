@@ -6,6 +6,7 @@
 #include "schema.h"
 #include "value.h"
 #include "statement.h"
+#include "index.h"
 
 using namespace std;
 
@@ -22,7 +23,8 @@ class Table{
         void update_where(const string &target_column,const string &new_value,const string &where_column,const string &where_operator,const string &where_value);
         vector<vector<Value>>get_all_rows();
         vector<Value>get_row(uint32_t row_num);
-        vector<vector<Value>>filter_rows(const Statement &statement);
+        void restore_rows(const vector<vector<Value>>&rows);
+        vector<vector<Value>>filter_rows(const Statement &statement,HashIndex *index=nullptr);
         void print_rows(const vector<vector<Value>>&rows,bool distinct=false)const;
         void print_rows_with_schema(const vector<vector<Value>>&rows,const Schema &schema,bool distinct=false)const;
         void print_selected_columns(const vector<vector<Value>>&rows,const vector<string>&columns,const Schema &schema,bool distinct=false,const vector<string>&aliases={})const;
