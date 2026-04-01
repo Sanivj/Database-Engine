@@ -204,6 +204,8 @@ bool prepare_statement(const string &input,Statement &statement){
         statement.offset_count=0;
         statement.aggregate_type=AggregateType::NONE;
         statement.aggregate_column="";
+        statement.aggregate_columns.clear();
+        statement.aggregate_types.clear();
         statement.has_group_by=false;
         statement.group_by_column="";
         statement.has_distinct=false;
@@ -246,6 +248,8 @@ bool prepare_statement(const string &input,Statement &statement){
                     if(open!=string::npos&&close!=string::npos){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
+                    statement.aggregate_types.push_back(AggregateType::COUNT);
+                    statement.aggregate_columns.push_back(statement.aggregate_column);
                 }else if(upper.find("SUM(")==0){
                     statement.aggregate_type=AggregateType::SUM;
 
@@ -254,6 +258,8 @@ bool prepare_statement(const string &input,Statement &statement){
                     if(open!=string::npos&&close!=string::npos){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
+                    statement.aggregate_types.push_back(AggregateType::SUM);
+                    statement.aggregate_columns.push_back(statement.aggregate_column);
                 }else if(upper.find("AVG(")==0){
                     statement.aggregate_type=AggregateType::AVG;
 
@@ -262,6 +268,8 @@ bool prepare_statement(const string &input,Statement &statement){
                     if(open!=string::npos&&close!=string::npos){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
+                    statement.aggregate_types.push_back(AggregateType::AVG);
+                    statement.aggregate_columns.push_back(statement.aggregate_column);
                 }else if(upper.find("MIN(")==0){
                     statement.aggregate_type=AggregateType::MIN;
 
@@ -270,6 +278,8 @@ bool prepare_statement(const string &input,Statement &statement){
                     if(open!=string::npos&&close!=string::npos){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
+                    statement.aggregate_types.push_back(AggregateType::MIN);
+                    statement.aggregate_columns.push_back(statement.aggregate_column);
                 }else if(upper.find("MAX(")==0){
                     statement.aggregate_type=AggregateType::MAX;
 
@@ -278,6 +288,8 @@ bool prepare_statement(const string &input,Statement &statement){
                     if(open!=string::npos&&close!=string::npos){
                         statement.aggregate_column=trim_copy(col.substr(open+1,close-open-1));
                     }
+                    statement.aggregate_types.push_back(AggregateType::MAX);
+                    statement.aggregate_columns.push_back(statement.aggregate_column);
                 }else{
                     size_t dot=col.find('.');
                     if(dot!=string::npos)col=col.substr(dot+1);
@@ -675,7 +687,7 @@ bool prepare_statement(const string &input,Statement &statement){
     }
 
     if(upper_first=="ROLLBACK"){
-        statement.type==StatementType::ROLLBACK_TXN;
+        statement.type=StatementType::ROLLBACK_TXN;
         return true;
     }
 

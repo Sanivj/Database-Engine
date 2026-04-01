@@ -74,6 +74,8 @@ struct Statement{
     //AGGREGATE
     AggregateType aggregate_type=AggregateType::NONE;
     string aggregate_column;
+    vector<AggregateType>aggregate_types;
+    vector<string>aggregate_columns;
     bool has_group_by=false;
     string group_by_column;
     //JOINS

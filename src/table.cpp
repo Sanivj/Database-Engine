@@ -1020,50 +1020,49 @@ void Table::sort_rows(vector<vector<Value>>&rows,const string &order_by_column,b
 void Table::aggregate(const vector<vector<Value>>&rows,const Statement &statement){
     const auto &cols=schema.get_columns();
 
-    int col_index=-1;
+    vector<AggregateType> types=statement.aggregate_types;
+    vector<string> agg_cols=statement.aggregate_columns;
+    if(types.empty()){
+        types.push_back(statement.aggregate_type);
+        agg_cols.push_back(statement.aggregate_column);
+    }
 
-    if(statement.aggregate_column!="*"){
+    bool first=true;
+    for(size_t ai=0;ai<types.size();ai++){
+        AggregateType atype=types[ai];
+        string acol=agg_cols[ai];
+
+        if(!first) cout<<"  ";
+        first=false;
+
+        if(atype==AggregateType::COUNT){
+            cout<<"COUNT: "<<rows.size();
+            continue;
+        }
+
+        int col_index=-1;
         for(size_t i=0;i<cols.size();i++){
-            if(cols[i].name==statement.aggregate_column){
-                col_index=i;
-                break;
-            }
+            if(cols[i].name==acol){col_index=(int)i;break;}
         }
         if(col_index==-1){
-            cout<<"Error: Column does not exist.\n";
-            return;
+            cout<<"Error: Column '"<<acol<<"' does not exist.";
+            continue;
         }
+
+        int sum=0,count=0,min_val=INT_MAX,max_val=INT_MIN;
+        for(const auto &row:rows){
+            int v=row[col_index].as_int();
+            sum+=v; count++;
+            if(v<min_val)min_val=v;
+            if(v>max_val)max_val=v;
+        }
+
+        if(atype==AggregateType::SUM)       cout<<"SUM: "<<sum;
+        else if(atype==AggregateType::AVG)  cout<<"AVG: "<<(count==0?0:sum/count);
+        else if(atype==AggregateType::MIN)  cout<<"MIN: "<<(count==0?0:min_val);
+        else if(atype==AggregateType::MAX)  cout<<"MAX: "<<(count==0?0:max_val);
     }
-
-    if(statement.aggregate_type==AggregateType::COUNT){
-        cout<<rows.size()<<"\n";
-        return;
-    }
-
-    int sum=0;
-    int count=0;
-    int min_val=INT_MAX;
-    int max_val=INT_MIN;
-
-    for(const auto &row:rows){
-        int value=row[col_index].as_int();
-
-        sum+=value;
-        count++;
-
-        if(value<min_val)min_val=value;
-        if(value>max_val)max_val=value;
-    }
-
-    if(statement.aggregate_type==AggregateType::SUM){
-        cout<<sum<<"\n";
-    }else if(statement.aggregate_type==AggregateType::AVG){
-        cout<<(count==0?0:sum/count)<<"\n";
-    }else if(statement.aggregate_type==AggregateType::MIN){
-        cout<<min_val<<"\n";
-    }else if(statement.aggregate_type==AggregateType::MAX){
-        cout<<max_val<<"\n";
-    }
+    cout<<"\n";
 }
 
 void Table::group_by_aggregate(const vector<vector<Value>>&rows,const Statement &statement){
