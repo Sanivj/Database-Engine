@@ -316,7 +316,18 @@ vector<vector<Value>>Table::scan_rows(const Statement &statement,HashIndex *inde
             if(idx1==-1)continue;
 
             const Value &cell=values[idx1];
-            if(cell.is_null()){
+            string where_val=trim_copy(statement.where_value);
+            bool where_is_null=(where_val=="__NULL__"||where_val=="NULL");
+            string op=trim_copy(statement.where_operator);
+
+            if(op=="IS_NULL"){
+                match=cell.is_null();
+            }else if(op=="IS_NOT_NULL"){
+                match=!cell.is_null();
+            }else if(where_is_null){
+                if(statement.where_operator=="=")match=cell.is_null();
+                else if(statement.where_operator=="!=")match=!cell.is_null();
+            }else if(cell.is_null()){
                 match=false;
             }else if(cell.get_type()==DataType::INT){
                 int left=cell.as_int();
@@ -746,8 +757,22 @@ vector<vector<Value>>Table::filter_rows(const Statement &statement,HashIndex * i
     for(const auto &row:all_rows){
         bool match1=false;
         const Value &cell1=row[idx1];
+        string where_val1=trim_copy(statement.where_value);
+        bool where1_is_null=(where_val1=="__NULL__"||where_val1=="NULL");
 
-        if(cell1.get_type()==DataType::INT){
+
+        string op1=trim_copy(statement.where_operator);
+
+        if(op1=="IS_NULL"){
+            match1=cell1.is_null();
+        }else if(op1=="IS_NOT_NULL"){
+            match1=!cell1.is_null();
+        }else if(where1_is_null){
+            if(trim_copy(statement.where_operator)=="=")       match1=cell1.is_null();
+            else if(trim_copy(statement.where_operator)=="!=") match1=!cell1.is_null();
+        }else if(cell1.is_null()){
+            match1=false;
+        }else if(cell1.get_type()==DataType::INT){
             int left=cell1.as_int();
             int right;
             try{
@@ -776,7 +801,21 @@ vector<vector<Value>>Table::filter_rows(const Statement &statement,HashIndex * i
         if(statement.has_second_condition){
             const Value &cell2=row[idx2];
 
-            if(cell2.get_type()==DataType::INT){
+            string where_val2=trim_copy(statement.where_value2);
+            bool where2_is_null=(where_val2=="__NULL__"||where_val2=="NULL");
+
+            string op2=trim_copy(statement.where_operator2);
+
+            if(op2=="IS_NULL"){
+                match2=cell2.is_null();
+            }else if(op2=="IS_NOT_NULL"){
+                match2=!cell2.is_null();
+            }else if(where2_is_null){
+                if(trim_copy(statement.where_operator2)=="=")       match2=cell2.is_null();
+                else if(trim_copy(statement.where_operator2)=="!=") match2=!cell2.is_null();
+            }else if(cell2.is_null()){
+                match2=false;
+            }else if(cell2.get_type()==DataType::INT){
                 int left=cell2.as_int();
                 int right;
                 try{
@@ -1108,6 +1147,16 @@ void Table::group_by_aggregate(const vector<vector<Value>>&rows,const Statement 
         }
     }
     
+    string agg_label;
+    if(statement.aggregate_type==AggregateType::COUNT) agg_label="COUNT(*)";
+    else if(statement.aggregate_type==AggregateType::SUM) agg_label="SUM("+statement.aggregate_column+")";
+    else if(statement.aggregate_type==AggregateType::AVG) agg_label="AVG("+statement.aggregate_column+")";
+    else if(statement.aggregate_type==AggregateType::MIN) agg_label="MIN("+statement.aggregate_column+")";
+    else if(statement.aggregate_type==AggregateType::MAX) agg_label="MAX("+statement.aggregate_column+")";
+    cout<<"("<<statement.group_by_column<<", "<<agg_label<<")\n";
+    cout<<string(40,'-')<<"\n";
+
+
     for(auto &[key,tup]:groups){
         auto &[cnt,sum,mn,mx]=tup;
         int result=0;
@@ -1402,6 +1451,9 @@ vector<vector<Value>>Table::filter_joined_rows(const vector<vector<Value>>&rows,
     for(const auto &row:rows){
         auto eval=[&](int idx,const string &op,const string &val)->bool{
             const Value &cell=row[idx];
+            if(op=="IS_NULL")     return cell.is_null();
+            if(op=="IS_NOT_NULL") return !cell.is_null();
+            if(cell.is_null())    return false;
             if(cell.get_type()==DataType::INT){
                 int left=cell.as_int();
                 int right;

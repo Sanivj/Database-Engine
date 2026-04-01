@@ -427,6 +427,20 @@ bool prepare_statement(const string &input,Statement &statement){
             size_t dot1=statement.where_column.find('.');
             if(dot1!=string::npos) statement.where_column=statement.where_column.substr(dot1+1);
 
+            if(string_to_upper(statement.where_operator)=="IS"){
+                if(string_to_upper(statement.where_value)=="NULL"){
+                    statement.where_operator="IS_NULL";
+                    statement.where_value="__NULL__";
+                }else if(string_to_upper(statement.where_value)=="NOT"){
+                    string next;
+                    where_stream>>next;
+                    if(string_to_upper(next)=="NULL"){
+                        statement.where_operator="IS_NOT_NULL";
+                        statement.where_value="__NULL__";
+                    }
+                }
+            }
+
             statement.where_value=trim_copy(statement.where_value);
 
             if(!statement.where_value.empty()&&statement.where_value.back()==';')statement.where_value.pop_back();
@@ -449,6 +463,20 @@ bool prepare_statement(const string &input,Statement &statement){
 
                 size_t dot2=statement.where_column2.find('.');
                 if(dot2!=string::npos) statement.where_column2=statement.where_column2.substr(dot2+1);
+
+                if(string_to_upper(statement.where_operator2)=="IS"){
+                    if(string_to_upper(statement.where_value2)=="NULL"){
+                        statement.where_operator2="IS_NULL";
+                        statement.where_value2="__NULL__";
+                    }else if(string_to_upper(statement.where_value2)=="NOT"){
+                        string next;
+                        where_stream>>next;
+                        if(string_to_upper(next)=="NULL"){
+                            statement.where_operator2="IS_NOT_NULL";
+                            statement.where_value2="__NULL__";
+                        }
+                    }
+                }
                 
                 statement.where_value2=trim_copy(statement.where_value2);
 
